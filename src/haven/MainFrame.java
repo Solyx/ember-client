@@ -35,7 +35,7 @@ import java.lang.reflect.*;
 
 public class MainFrame extends java.awt.Frame implements Runnable, Console.Directory {
     UIPanel p;
-    private static final String TITLE = String.format("Hafen (modified by Ender v%s)", Config.version);
+    private static final String TITLE = String.format("Ember Client v%s)", Config.version);
     private final ThreadGroup g;
     public final Thread mt;
     DisplayMode fsmode = null, prefs = null;

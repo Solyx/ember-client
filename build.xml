@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 
-<project name="hafen" default="deftgt">
+<project name="ember-client" default="deftgt">
   <target name="build-env">
     <mkdir dir="build" />
     <mkdir dir="build/classes" />
@@ -83,7 +83,7 @@
     <exec executable="java" failifexecutionfails="false">
       <arg line="-jar resources/LayerUtil.jar -re resources/src/remote resources/compiled/res-preload" />
     </exec>
-    <jar destfile="build/client-res.jar" update="true">
+    <jar destfile="build/lib/client-res.jar" update="true">
       <fileset dir="resources/compiled" />
       <fileset dir="resources" includes="item_data/**"/>
       <file file="etc/radar.xml"/>
@@ -91,8 +91,8 @@
       <file file="etc/gob_radius.json"/>
       <fileset dir="." includes="i10n/**/**.json"/>
     </jar>
-    <copy file="lib/builtin-res.jar" todir="build"/>
-    <copy file="lib/hafen-res.jar" todir="build"/>
+    <copy file="lib/builtin-res.jar" todir="build/lib"/>
+    <copy file="lib/hafen-res.jar" todir="build/lib"/>
   </target>
 
   <target name="jar" depends="hafen-client,buildinfo,lib-classes,resources">
@@ -102,7 +102,7 @@
       <fileset file="changelog.txt" />
       <manifest>
         <attribute name="Main-Class" value="haven.MainFrame" />
-        <attribute name="Class-Path" value="jogl.jar gluegen-rt.jar client-res.jar builtin-res.jar hafen-res.jar" />
+        <attribute name="Class-Path" value="lib/jogl.jar lib/gluegen-rt.jar lib/client-res.jar lib/builtin-res.jar lib/hafen-res.jar" />
       </manifest>
     </jar>
     <chmod file="build/hafen.jar" perm="a+x" />
@@ -119,7 +119,7 @@
   </target>
   
   <target name="jars" depends="build-env, jar">
-    <copy todir="build">
+    <copy todir="build/lib">
       <fileset dir="lib">
 	<include name="jogl.jar" />
 	<include name="gluegen-rt.jar" />
