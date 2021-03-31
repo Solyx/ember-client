@@ -20,7 +20,7 @@ public class Realm extends Polity {
     public Realm(String name) {
 	super("Realm", name);
 	Composer lay = new Composer(this).vmrgn(UI.scale(5));
-	lay.add(new Img(CharWnd.catf.render(L10N.label("Realm")).tex()));
+	lay.add(new Img(CharWnd.catf.i10n_label("Realm").tex()));
 	lay.add(new Label.Untranslated(name, nmf));
 	lay.add(new AuthMeter(new Coord(width, UI.scale(20))));
 	lay.addar(width, new Authobj("c"), new Authobj("s"), new Authobj("f"));
@@ -40,7 +40,7 @@ public class Realm extends Polity {
 			update(-1);
 		}
 
-		public void changed(int group) {
+		public void select(int group) {
 		    Realm.this.wdgmsg("gsel", group);
 		}
 	    });

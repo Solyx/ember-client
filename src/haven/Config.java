@@ -42,6 +42,7 @@ public class Config {
     public static String authuser = getprop("haven.authuser", null);
     public static String authserv = getprop("haven.authserv", null);
     public static String defserv = getprop("haven.defserv", "127.0.0.1");
+    public static String[] servargs = null;
     public static URL resurl = geturl("haven.resurl", "http://game.havenandhearth.com/res/");
     public static URL screenurl = geturl("haven.screenurl", "http://game.havenandhearth.com/mt/ss");
     public static URL cachebase = geturl("haven.cachebase", "http://game.havenandhearth.com/render/");
@@ -60,7 +61,7 @@ public class Config {
     public static int authport = getint("haven.authport", 1871);
     public static boolean softres = getprop("haven.softres", "on").equals("on");
     public static Double uiscale = getfloat("haven.uiscale", null);
-    public static byte[] authck = null;
+    public static byte[] authck = null, inittoken = null;
     public static String prefspec = "hafen";
     public static final String confid = "";
     
@@ -73,6 +74,8 @@ public class Config {
 	String p;
 	if((p = getprop("haven.authck", null)) != null)
 	    authck = Utils.hex2byte(p);
+	if((p = getprop("haven.inittoken", null)) != null)
+	    inittoken = Utils.hex2byte(p);
 
 	loadBuildVersion();
 	isUpdate = !CFG.VERSION.get().equals(version) || !getFile("changelog.txt").exists();
@@ -268,6 +271,8 @@ public class Config {
 		defserv = opt.rest[0];
 	    }
 	}
+	if(opt.rest.length > 1)
+	    servargs = Utils.splice(opt.rest, 1);
     }
     
     public static void setUserName(String username) {

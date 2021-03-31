@@ -940,9 +940,9 @@ public class Resource implements Serializable {
 	public final boolean nooff;
 	public final int id;
 	public final Map<String, byte[]> kvdata;
-	private float scale = 1;
-	private int gay = -1;
+	public float scale = 1;
 	public Coord sz, o, so, tsz, ssz;
+	private int gay = -1;
 
 	public Image(Message buf) {
 	    z = buf.int16();
@@ -990,15 +990,10 @@ public class Resource implements Serializable {
 		 * area. */
 		so = new Coord(Math.min(so.x, tsz.x - ssz.x), Math.min(so.y, sz.y - ssz.y));
 	    }
+	    scaled = PUtils.uiscale(img, ssz);
 	}
 
 	public BufferedImage scaled() {
-	    if(scaled == null) {
-		synchronized(this) {
-		    if(scaled == null)
-			scaled = PUtils.uiscale(img, ssz);
-		}
-	    }
 	    return(scaled);
 	}
 
@@ -1061,10 +1056,11 @@ public class Resource implements Serializable {
 
     @LayerName("tooltip")
     public class Tooltip extends Layer {
-	public final String t;
+	public final String t, o;
                 
 	public Tooltip(Message buf) {
-	    t = L10N.tooltip(getres(), new String(buf.bytes(), Utils.utf8));
+	    o = new String(buf.bytes(), Utils.utf8);
+	    t = L10N.tooltip(getres(), o);
 	}
                 
 	public void init() {}
