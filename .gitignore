@@ -5,3 +5,7 @@
 out
 /resources/compiled
 /resources/classes
+charterbook.json
+config.json
+launch.bat
+windows.json
