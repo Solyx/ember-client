@@ -129,6 +129,13 @@
       <fileset dir="lib/jogl-natives" />
     </copy>
   </target>
+
+  <target name="dist" depends="clean, jars">
+    <zip destfile="build/update.zip" update="true">
+      <fileset dir="build" includes="hafen.jar"/>
+      <zipfileset dir="build/lib" includes="client-res.jar" prefix="lib/"/>
+    </zip>
+  </target>
   
   <target name="deftgt" depends="res-jar, jars" />
   <target name="buildprocess" depends="jars"/>
