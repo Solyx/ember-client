@@ -445,20 +445,6 @@ public class CharWnd extends Window {
 	}
 
 	public void tick(double dt) {
-	    if((attr.base != cbv) || (attr.comp != ccv)) {
-		cbv = attr.base; ccv = attr.comp;
-		Color c = Color.WHITE;
-		if(ccv > cbv) {
-		    c = buff;
-		    tooltip = Text.render(String.format("%d + %d", cbv, ccv - cbv));
-		} else if(ccv < cbv) {
-		    c = debuff;
-		    tooltip = Text.render(String.format("%d - %d", cbv, cbv - ccv));
-		} else {
-		    tooltip = null;
-		}
-		ct = attrf.render(Integer.toString(ccv), c);
-	    }
 	    if((lvlt > 0.0) && ((lvlt -= dt) < 0))
 		lvlt = 0.0;
 	}
@@ -473,7 +459,19 @@ public class CharWnd extends Window {
 	    Coord cn = new Coord(0, sz.y / 2);
 	    g.aimage(img, cn.add(5, 0), 0, 0.5);
 	    g.aimage(rnm.tex(), cn.add(img.sz().x + margin2, 1), 0, 0.5);
-	    g.aimage(ct.tex(), cn.add(sz.x - UI.scale(7), 1), 1, 0.5);
+	    
+	    cbv = attr.base;
+	    ccv = attr.comp;
+	    if (ccv > cbv) {
+		Text buffed = attrf.render(Integer.toString(ccv), buff);
+		g.aimage(buffed.tex(), cn.add(sz.x - UI.scale(7), 1), 1, 0.5);
+	    } else if (ccv < cbv) {
+		Text debuffed = attrf.render(Integer.toString(ccv), debuff);
+		g.aimage(debuffed.tex(), cn.add(sz.x - UI.scale(7), 1), 1, 0.5);
+	    }
+	    
+	    Text base = attrf.render(Integer.toString(cbv), Color.WHITE);
+	    g.aimage(base.tex(), cn.add(sz.x - UI.scale(50), 1), 1, 0.5);
 	}
 
 	public void lvlup() {

@@ -16,7 +16,7 @@
           </element>
         </element>
         <element id="module-output" name="resutil" />
-        <element id="module-output" name="hafen" />
+        <element id="module-output" name="ember-client" />
       </element>
       <element id="library" level="project" name="lib" />
       <element id="file-copy" path="$PROJECT_DIR$/build/hafen.jar" />
