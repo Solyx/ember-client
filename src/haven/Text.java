@@ -290,10 +290,6 @@ public class Text {
     public static Line render(String text, Color c) {
 	return(std.render(text, c));
     }
-    
-    public static Line render(String text, Color c, Foundry foundry) {
-	return (foundry.render(text, c));
-    }
 	
     public static Line renderf(Color c, String text, Object... args) {
 	return(std.render(String.format(text, args), c));

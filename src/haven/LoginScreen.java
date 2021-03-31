@@ -26,18 +26,15 @@
 
 package haven;
 
-import ember.LoginData;
 import haven.rx.CharterBook;
 
-import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.io.*;
 
 public class LoginScreen extends Widget {
     public static final Text.Foundry
 	textf = new Text.Foundry(Text.sans, 16).aa(true),
-	textfs = new Text.Foundry(Text.sans, 14).aa(true),
-    	special = new Text.Foundry(Text.sans, 14).aa(true);
+	textfs = new Text.Foundry(Text.sans, 14).aa(true);
     public static final Tex bg = Resource.loadtex("gfx/loginscr");
     public static final Position bgc = new Position(UI.scale(420, 300));
     private Login cur;
@@ -52,7 +49,6 @@ public class LoginScreen extends Widget {
 	super(bg.sz());
 	setfocustab(true);
 	add(new Img(bg), Coord.z);
-	add(new LoginList(UI.scale(200), UI.scale(29)), new Coord(10, 10));
 	optbtn = adda(new Button(UI.scale(100), "Options"), pos("cbl").add(10, -10), 0, 1);
 	optbtn.setgkey(GameUI.kb_opt);
 	accounts = add(new AccountList(10));
@@ -178,96 +174,6 @@ public class LoginScreen extends Widget {
 		return(true);
 	    }
 	    return(false);
-	}
-    }
-    
-    public class LoginList extends Listbox<LoginData> {
-	private final Tex xicon = Text.render("\u2716", Color.RED, special).tex();
-	private int hover = -1;
-	private final static int ITEM_HEIGHT = 20;
-	private Coord lastMouseDown = Coord.z;
-	
-	public LoginList(int w, int h) {
-	    super(w, h, UI.scale(ITEM_HEIGHT));
-	}
-	
-	@Override
-	protected void drawbg(GOut g) {
-	    g.chcolor(0, 0, 0, 120);
-	    g.frect(Coord.z, sz);
-	    g.chcolor();
-	}
-	
-	@Override
-	protected void drawsel(GOut g) {
-	}
-	
-	@Override
-	protected LoginData listitem(int i) {
-	    synchronized (Config.logins) {
-		return Config.logins.get(i);
-	    }
-	}
-	
-	@Override
-	protected int listitems() {
-	    synchronized (Config.logins) {
-		return Config.logins.size();
-	    }
-	}
-	
-	@Override
-	public void mousemove(Coord c) {
-	    setHoverItem(c);
-	    super.mousemove(c);
-	}
-	
-	@Override
-	public boolean mousewheel(Coord c, int amount) {
-	    setHoverItem(c);
-	    return super.mousewheel(c, amount);
-	}
-	
-	private void setHoverItem(Coord c) {
-	    if (c.x > 0 && c.x < sz.x && c.y > 0 && c.y < listitems() * UI.scale(ITEM_HEIGHT))
-		hover = c.y / UI.scale(ITEM_HEIGHT) + sb.val;
-	    else
-		hover = -1;
-	}
-	
-	@Override
-	protected void drawitem(GOut g, LoginData item, int i) {
-	    if (hover == i) {
-		g.chcolor(96, 96, 96, 255);
-		g.frect(Coord.z, g.br);
-		g.chcolor();
-	    }
-	    Tex tex = Text.render(item.name, Color.WHITE, textfs).tex();
-	    int y = UI.scale(ITEM_HEIGHT) / 2 - tex.sz().y / 2;
-	    g.image(tex, new Coord(5, y));
-	    g.image(xicon, new Coord(sz.x - 25, y));
-	}
-	
-	@Override
-	public boolean mousedown(Coord c, int button) {
-	    lastMouseDown = c;
-	    return super.mousedown(c, button);
-	}
-	
-	@Override
-	protected void itemclick(LoginData itm, int button) {
-	    if (button == 1) {
-		if (lastMouseDown.x >= sz.x - 25 && lastMouseDown.x <= sz.x - 25 + 20) {
-		    synchronized (Config.logins) {
-			Config.logins.remove(itm);
-			Config.saveLogins();
-		    }
-		} else if (c.x < sz.x - 35) {
-		    parent.wdgmsg("forget");
-		    parent.wdgmsg("login", new Object[]{new AuthClient.NativeCred(itm.name, itm.pass), false});
-		}
-		super.itemclick(itm, button);
-	    }
 	}
     }
 

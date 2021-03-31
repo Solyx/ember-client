@@ -26,16 +26,11 @@
 
 package haven;
 
-import ember.LoginData;
 import haven.rx.Reactor;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Properties;
 
 import static haven.Utils.*;
@@ -68,7 +63,6 @@ public class Config {
     public static byte[] authck = null;
     public static String prefspec = "hafen";
     public static final String confid = "";
-    public static List<LoginData> logins = new ArrayList<LoginData>();
     
     public static String version;
     public static final boolean isUpdate;
@@ -84,41 +78,6 @@ public class Config {
 	isUpdate = !CFG.VERSION.get().equals(version) || !getFile("changelog.txt").exists();
 	if(isUpdate){
 	    CFG.VERSION.set(version);
-	}
- 
-	loadLogins();
-    }
-    
-    private static void loadLogins() {
-	try {
-	    String loginsjson = Utils.getpref("logins", null);
-	    if (loginsjson == null)
-		return;
-	    JSONArray larr = new JSONArray(loginsjson);
-	    for (int i = 0; i < larr.length(); i++) {
-		JSONObject l = larr.getJSONObject(i);
-		logins.add(new LoginData(l.get("name").toString(), l.get("pass").toString()));
-	    }
-	} catch (Exception e) {
-	    e.printStackTrace();
-	}
-    }
-    
-    public static void saveLogins() {
-	try {
-	    List<String> larr = new ArrayList<String>();
-	    for (LoginData ld : logins) {
-		String ldjson = new JSONObject(ld, new String[] {"name", "pass"}).toString();
-		larr.add(ldjson);
-	    }
-	    String jsonobjs = "";
-	    for (String s : larr)
-		jsonobjs += s + ",";
-	    if (jsonobjs.length() > 0)
-		jsonobjs = jsonobjs.substring(0, jsonobjs.length()-1);
-	    Utils.setpref("logins", "[" + jsonobjs + "]");
-	} catch (Exception e) {
-	    e.printStackTrace();
 	}
     }
 
