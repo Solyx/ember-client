@@ -980,6 +980,9 @@ public class OptWnd extends Window {
 	display.add(new CFGBox("Clear all damage after combat", CFG.CLEAR_ALL_DMG_AFTER_COMBAT), x, y);
 	
 	y += STEP;
+	display.add(new CFGBox("Show cumulative damage (amber style)", CFG.SHOW_CUMULATIVE_DMG), x, y);
+	
+	y += STEP;
 	display.add(new CFGBox("Simplified combat openings", CFG.SIMPLE_COMBAT_OPENINGS, "Show openings as solid colors with numbers"), x, y);
 	
 	y += STEP;

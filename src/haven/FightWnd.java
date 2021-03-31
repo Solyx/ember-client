@@ -619,7 +619,7 @@ public class FightWnd extends Widget {
 		if(redit == null)
 		    redit = attrf.render(nmed.line);
 		g.aimage(redit.tex(), new Coord(UI.scale(20), itemh / 2), 0.0, 0.5);
-		if(hasfocus && (((Utils.rtime() - focusstart) % 1.0) < 0.5)) {
+		if(hasfocus && (((Utils .rtime() - focusstart) % 1.0) < 0.5)) {
 		    int cx = redit.advance(nmed.point);
 		    g.chcolor(255, 255, 255, 255);
 		    Coord co = new Coord(UI.scale(20) + cx + UI.scale(1), (g.sz().y - redit.sz().y) / 2);

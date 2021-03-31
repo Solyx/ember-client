@@ -28,6 +28,7 @@ package haven;
 
 import java.util.*;
 import java.util.function.Consumer;
+
 import haven.render.Render;
 import java.util.stream.Stream;
 
@@ -58,7 +59,10 @@ public class OCache implements Iterable<Gob> {
     /* XXX: Use weak refs */
     private Collection<Collection<Gob>> local = new LinkedList<Collection<Gob>>();
     private HashMultiMap<Long, Gob> objs = new HashMultiMap<Long, Gob>();
+    private Map<Long, Integer> deleted = new TreeMap<Long, Integer>();
     private Glob glob;
+    private static Map<Long, DamageSprite> gobdmgs = new HashMap<Long, DamageSprite>();
+    public static boolean isfight = false;
     private final Collection<ChangeCallback> cbs = new WeakList<ChangeCallback>();
 
     public interface ChangeCallback {
@@ -133,6 +137,22 @@ public class OCache implements Iterable<Gob> {
 	Consumer<Gob> task = g -> {
 	    synchronized(g) {
 		g.ctick(dt);
+		
+		// FIXME: If option is toggled off while there is an overlay, it will never be removed I think
+		if (CFG.SHOW_CUMULATIVE_DMG.get()) {
+		    Gob.Overlay dmgol = g.findol(DamageSprite.ID);
+		    if (dmgol != null)
+			dmgol.remove();
+		    if (isfight) {
+			DamageSprite dmgspr = gobdmgs.get(g.id);
+			if (dmgspr != null) {
+			    if (dmgspr.owner == g)
+				g.addol(new Gob.Overlay(g, DamageSprite.ID, dmgspr), false);
+			    else
+				g.addol(new Gob.Overlay(g, DamageSprite.ID, new DamageSprite(dmgspr.dmg, dmgspr.arm, g)), false);
+			}
+		    }
+		}
 	    }
 	};
 	if(!Config.par)
@@ -558,6 +578,8 @@ public class OCache implements Iterable<Gob> {
 	    Gob.Overlay nol = null;
 	    if(ol == null) {
 		g.addol(nol = new Gob.Overlay(g, olid, resid, sdt), false);
+		if (sdt.rt == 7 && isfight && CFG.SHOW_CUMULATIVE_DMG.get())
+		    setdmgoverlay(g, resid, new MessageBuf(sdt));
 	    } else if(!ol.sdt.equals(sdt)) {
 		if(ol.spr instanceof Sprite.CUpd) {
 		    MessageBuf copy = new MessageBuf(sdt);
@@ -566,6 +588,8 @@ public class OCache implements Iterable<Gob> {
 		} else {
 		    g.addol(nol = new Gob.Overlay(g, olid, resid, sdt), false);
 		    ol.remove();
+		    if (sdt.rt == 7 && isfight && CFG.SHOW_CUMULATIVE_DMG.get())
+			setdmgoverlay(g, resid, new MessageBuf(sdt));
 		}
 	    }
 	    if(nol != null)
@@ -579,6 +603,44 @@ public class OCache implements Iterable<Gob> {
 	    }
 	}
     }
+    
+    private static void setdmgoverlay(final Gob g, final Indir<Resource> resid, final MessageBuf sdt) {
+	final int dmg = sdt.int32();
+	// ignore dmg of 1 from scents
+	if (dmg == 1)
+	    return;
+	sdt.uint8();
+	final int clr = sdt.uint16();
+	if (clr != 61455 /* damage */ && clr != 36751 /* armor damage */)
+	    return;
+	
+	Defer.later(new Defer.Callable<Void>() {
+	    public Void call() {
+		try {
+		    Resource res = resid.get();
+		    if (res != null && res.name.equals("gfx/fx/floatimg")) {
+			synchronized (gobdmgs) {
+			    DamageSprite dmgspr = gobdmgs.get(g.id);
+			    if (dmgspr == null)
+				gobdmgs.put(g.id, new DamageSprite(dmg, clr == 36751, g));
+			    else
+				dmgspr.update(dmg, clr == 36751);
+			}
+		    }
+		} catch (Loading le) {
+		    Defer.later(this);
+		}
+		return null;
+	    }
+	});
+    }
+    
+    public void removedmgoverlay(long gobid) {
+	synchronized (gobdmgs) {
+	    gobdmgs.remove(gobid);
+	}
+    }
+    
     public Delta overlay(Message msg) {
 	int olidf = msg.int32();
 	boolean prs = (olidf & 1) != 0;

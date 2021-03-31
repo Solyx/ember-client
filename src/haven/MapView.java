@@ -45,7 +45,7 @@ import haven.render.sl.Type;
 
 public class MapView extends PView implements DTarget, Console.Directory {
     public static boolean clickdb = false;
-    public long plgob = -1;
+    public static long plgob = -1;
     public Coord2d cc;
     public final Glob glob;
     private int view = 2;

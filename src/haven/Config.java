@@ -41,6 +41,7 @@ import java.util.Properties;
 import static haven.Utils.*;
 
 public class Config {
+    public static final boolean iswindows = System.getProperty("os.name").startsWith("Windows");
     public static final File HOMEDIR = new File("").getAbsoluteFile();
     public static final String LINE_SEPARATOR = System.getProperty("line.separator");
     public static String authuser = getprop("haven.authuser", null);
