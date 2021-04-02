@@ -83,7 +83,7 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 	    return KeyMatch.forcode(KeyStroke.getKeyStroke(Character.toUpperCase(hk), 0).getKeyCode(), KeyMatch.MODS & ~KeyMatch.S, 0);
 	}
 	public KeyBinding binding() {
-	    return(KeyBinding.get("scm/" + res.name, hotkey()));
+	    return(KeyBinding.get2("scm/" + res.name, hotkey()));
 	}
 	public void use() {
 	    pag.scm.wdgmsg("act", (Object[])res.layer(Resource.action).ad);
@@ -276,6 +276,10 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
     @Override
     public void bound() {
 	super.bound();
+	ui.gui.menuObservable.notifyObservers();
+    }
+    
+    private void initCustomPaginae() {
 	makeLocal("paginae/add/timer", Action.TOGGLE_TIMERS);
 	makeLocal("paginae/add/clear_player_dmg", Action.CLEAR_PLAYER_DAMAGE);
 	makeLocal("paginae/add/clear_all_dmg", Action.CLEAR_ALL_DAMAGE);
@@ -284,7 +288,7 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 	makeLocal("paginae/add/buildlist", Action.OPEN_QUICK_BUILD);
 	makeLocal("paginae/add/craftlist", Action.OPEN_QUICK_CRAFT);
 	makeLocal("paginae/add/autobot", Action.BOT_PICK_ALL_HERBS);
-	ui.gui.menuObservable.notifyObservers();
+	makeLocal("paginae/add/hide_trees", Action.TOGGLE_HIDE_TREES);
     }
     
     private void makeLocal(String path, CustomPaginaAction action) {
@@ -381,6 +385,7 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 
     public MenuGrid() {
 	super(bgsz.mul(gsz).add(UI.scale(1), UI.scale(1)));
+	initCustomPaginae();
     }
 
     public static Comparator<Pagina> sorter = new Comparator<Pagina>() {
@@ -677,12 +682,11 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 	}
     }
 
-    public static final KeyBinding kb_root = KeyBinding.get("scm-root", KeyMatch.forcode(KeyEvent.VK_ESCAPE, 0));
-    public static final KeyBinding kb_back = KeyBinding.get("scm-back", KeyMatch.forcode(KeyEvent.VK_BACK_SPACE, 0));
-    public static final KeyBinding kb_next = KeyBinding.get("scm-next", KeyMatch.forchar('N', KeyMatch.S | KeyMatch.C | KeyMatch.M, KeyMatch.S));
+    public static final KeyBinding kb_root = KeyBinding.get2("scm-root", KeyMatch.forcode(KeyEvent.VK_ESCAPE, 0));
+    public static final KeyBinding kb_back = KeyBinding.get2("scm-back", KeyMatch.forcode(KeyEvent.VK_BACK_SPACE, 0));
+    public static final KeyBinding kb_next = KeyBinding.get2("scm-next", KeyMatch.forchar('N', KeyMatch.S | KeyMatch.C | KeyMatch.M, KeyMatch.S));
     public boolean globtype(char k, KeyEvent ev) {
-	if(ui.modflags() != 0){return false;}
-	if((k == 27) && (this.cur != null)) {
+	if((kb_root.key().match(ev)) && (this.cur != null)) {
 	    this.cur = null;
 	    curoff = 0;
 	    updlayout();

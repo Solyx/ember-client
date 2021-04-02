@@ -723,7 +723,7 @@ public class Widget {
 		    int modign = 0;
 		    if(args.length > 2)
 			modign = (Integer)args[2];
-		    setgkey(KeyBinding.get("wgk/" + (String)args[1], key, modign));
+		    setgkey(KeyBinding.get2("wgk/" + (String)args[1], key, modign));
 		} else {
 		    gkey = key;
 		}
@@ -860,10 +860,10 @@ public class Widget {
 	    modmask = KeyMatch.MODS;
 	Integer code = gkeys.get(key);
 	if(code != null)
-	    return(KeyMatch.forcode(code, modmask, modmatch));
+	    return(KeyMatch2.forcode(code, modmask, modmatch));
 	if(gkey < 32)
-	    return(KeyMatch.forchar((char)((int)'A' + gkey - 1), KeyMatch.C));
-	return(KeyMatch.forchar((char)key, modmask, modmatch));
+	    return(KeyMatch2.forchar((char)((int)'A' + gkey - 1), KeyMatch.C));
+	return(KeyMatch2.forchar((char)key, modmask, modmatch));
     }
 
     public boolean gkeytype(KeyEvent ev) {
@@ -891,9 +891,9 @@ public class Widget {
 	return(this);
     }
 	
-    public static final KeyMatch key_act = KeyMatch.forcode(KeyEvent.VK_ENTER, 0);
-    public static final KeyMatch key_esc = KeyMatch.forcode(KeyEvent.VK_ESCAPE, 0);
-    public static final KeyMatch key_tab = KeyMatch.forcode(KeyEvent.VK_TAB, 0);
+    public static final KeyMatch key_act = KeyMatch2.forcode(KeyEvent.VK_ENTER, 0);
+    public static final KeyMatch key_esc = KeyMatch2.forcode(KeyEvent.VK_ESCAPE, 0);
+    public static final KeyMatch key_tab = KeyMatch2.forcode(KeyEvent.VK_TAB, 0);
     public boolean keydown(KeyEvent ev) {
 	if(canactivate) {
 	    if(key_act.match(ev)) {
@@ -1372,16 +1372,18 @@ public class Widget {
 
     public class KeyboundTip implements Indir<Tex> {
 	public final String base;
+	public final boolean rich;
 	private Tex rend = null;
 	private boolean hrend = false;
 	private KeyMatch rkey = null;
 
-	public KeyboundTip(String base) {
-	    this(base, true);
+	public KeyboundTip(String base, boolean rich, boolean i10n) {
+	    this.base = i10n ? L10N.label(base) : base;;
+	    this.rich = rich;
 	}
-    
-	public KeyboundTip(String base, boolean i10n) {
-	    this.base = i10n ? L10N.label(base) : base;
+
+	public KeyboundTip(String base) {
+	    this(base, false, true);
 	}
 
 	public KeyboundTip() {
@@ -1392,17 +1394,25 @@ public class Widget {
 	    KeyMatch key = (kb_gkey == null) ? null : kb_gkey.key();
 	    if(!hrend || (rkey != key)) {
 		String tip;
+		int w = 0;
 		if(base != null) {
-		    tip = RichText.Parser.quote(base);
-		    if((key != null) && (key != KeyMatch.nil))
-			tip = String.format("%s ($col[255,255,0]{%s})", tip, RichText.Parser.quote(kb_gkey.key().name()));
+		    if(rich) {
+			tip = base;
+			if((key != null) && (key != KeyMatch.nil))
+			    tip = String.format("%s\n\nKeyboard shortcut: $col[255,255,0]{%s}", tip, RichText.Parser.quote(kb_gkey.key().name()));
+			w = 300;
+		    } else {
+			tip = RichText.Parser.quote(base);
+			if((key != null) && (key != KeyMatch.nil))
+			    tip = String.format("%s ($col[255,255,0]{%s})", tip, RichText.Parser.quote(kb_gkey.key().name()));
+		    }
 		} else {
 		    if((key == null) || (key == KeyMatch.nil))
 			tip = null;
 		    else
 			tip = String.format("Keyboard shortcut: $col[255,255,0]{%s}", RichText.Parser.quote(kb_gkey.key().name()));
 		}
-		rend = (tip == null) ? null : RichText.render(tip, 0).tex();
+		rend = (tip == null) ? null : RichText.render(tip, w).tex();
 		hrend = true;
 		rkey = key;
 	    }
@@ -1438,8 +1448,13 @@ public class Widget {
 	return(tooltip(c, prev == this));
     }
 
+    public Widget settip(String text, boolean rich) {
+	tooltip = new KeyboundTip(text, rich, true);
+	return(this);
+    }
+
     public Widget settip(String text) {
-	tooltip = new KeyboundTip(text, !Reflect.is(this, "Pointer"));
+	tooltip = new KeyboundTip(text, false, !Reflect.is(this, "Pointer"));
 	return(this);
     }
     

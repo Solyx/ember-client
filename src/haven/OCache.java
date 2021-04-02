@@ -75,16 +75,17 @@ public class OCache implements Iterable<Gob> {
 	Radar.clean();
 	callback(Radar.CHANGED);
 	callback(Gob.CHANGED);
-	CFG.DISPLAY_GOB_HITBOX.observe(cfg -> updateGobDrawables());
-	CFG.DISPLAY_GOB_HITBOX_TOP.observe(cfg -> updateGobDrawables());
+	CFG.DISPLAY_GOB_HITBOX.observe(cfg -> gobAction(Gob::updateHitbox));
+	CFG.DISPLAY_GOB_HITBOX_TOP.observe(cfg -> gobAction(Gob::updateHitbox));
+	CFG.HIDE_TREES.observe(cfg -> gobAction(Gob::updateTreeVisibility));
     }
     
-    public void updateGobDrawables() {
+    public void gobAction(Consumer<Gob> action) {
 	synchronized (this) {
 	    for (Gob g : this) {
-		g.drawableUpdated();
+	        action.accept(g);
 	    }
-	    local.forEach(gobs -> gobs.forEach(Gob::drawableUpdated));
+	    local.forEach(gobs -> gobs.forEach(action));
 	}
     }
     

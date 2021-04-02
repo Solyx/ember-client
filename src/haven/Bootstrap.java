@@ -55,7 +55,12 @@ public class Bootstrap implements UI.Receiver, UI.Runner {
 	this.hostname = hostname;
 	this.port = port;
     }
-
+    
+    @Override
+    public String title() {
+	return null;
+    }
+    
     public Bootstrap() {
 	this(Config.defserv, Config.mainport);
 	if((Config.authuser != null) && (Config.authck != null)) {
@@ -214,6 +219,7 @@ public class Bootstrap implements UI.Receiver, UI.Runner {
 				token = Utils.hex2byte(tokenhex);
 				setpref("savedtoken", tokenhex);
 				setpref("tokenname", tokenname);
+				setpref("savedtoken-" + tokenname, tokenhex);
 				continue retry;
 			    } else {
 				creds = (AuthClient.Credentials) msg.args[0];
