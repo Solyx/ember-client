@@ -29,15 +29,15 @@ package haven;
 import haven.Equipory.SLOTS;
 import haven.rx.BuffToggles;
 import haven.rx.Reactor;
+import integrations.mapv4.MappingClient;
+import me.ender.timer.Timer;
 
-import java.awt.*;
 import java.util.*;
 import java.util.function.*;
 import java.awt.Color;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
-import java.util.*;
 import java.util.List;
 
 import static haven.Action.*;
@@ -79,7 +79,8 @@ public class GameUI extends ConsoleHost implements Console.Directory {
     public HelpWnd help;
     public OptWnd opts;
     public Collection<DraggedItem> hand = new LinkedList<DraggedItem>();
-    private Collection<DraggedItem> handSave = new LinkedList<DraggedItem>();
+    private final Collection<DraggedItem> handSave = new LinkedList<DraggedItem>();
+    private boolean handHidden = false;
     public WItem vhand;
     public ChatUI chat;
     public ChatUI.Channel syslog;
@@ -251,6 +252,7 @@ public class GameUI extends ConsoleHost implements Console.Directory {
     @Override
     protected void attach(UI ui) {
 	ui.gui = this;
+	Timer.start(this);
 	super.attach(ui);
     }
 
@@ -554,7 +556,7 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 	if(timers == null) {
 	    timers = add(new TimerPanel(), 250, 100);
 	} else {
-	    timers.toggle();
+	    timers.tvisible();
 	}
     }
     
@@ -577,7 +579,13 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 	    this.id = id;
 	    this.base = base;
 	    this.g = g;
-	    cur = show(tvis = Utils.getprefb(id + "-visible", true))?0:1;
+	    if(CFG.DISABLE_UI_HIDING.get()) {
+		tvis = true;
+	    } else {
+		tvis = Utils.getprefb(id + "-visible", true);
+		
+	    }
+	    cur = show(tvis)?0:1;
 	}
 
 	public <T extends Widget> T add(T child) {
@@ -765,16 +773,16 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 	}
     }
 
-    public void toggleHand(){
-	if (hand.isEmpty()) {
+    public void toggleHand() {
+	if (handHidden) {
 	    hand.addAll(handSave);
 	    handSave.clear();
-	    updhand();
 	} else {
 	    handSave.addAll(hand);
 	    hand.clear();
-	    updhand();
 	}
+	updhand();
+	handHidden = !handHidden;
     }
 
     public void toggleStudy() {
@@ -936,6 +944,16 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 	    }
 	    if(mapstore != null) {
 		MapFile file = MapFile.load(mapstore, mapfilename());
+		if(CFG.AUTOMAP_UPLOAD.get()) {
+		    MappingClient.getInstance().ProcessMap(file, (m) -> {
+			if(m instanceof MapFile.PMarker) {
+			    return CFG.AUTOMAP_MARKERS.get().stream()
+				.map(group -> group.col)
+				.anyMatch(color -> color.equals(((MapFile.PMarker)m).color));
+			}
+			return true;
+		    });
+		}
 		mmap = blpanel.add(new CornerMap(UI.scale(new Coord(133, 133)), file), minimapc);
 		mmap.lower();
 		mapfile = new MapWnd(file, map, Utils.getprefc("wndsz-map", UI.scale(new Coord(700, 500))), "Map");
@@ -969,7 +987,11 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 	} else if(place == "hand") {
 	    GItem g = add((GItem)child);
 	    Coord lc = (Coord)args[1];
-	    hand.add(new DraggedItem(g, lc));
+	    if(handHidden) {
+	    	handSave.add(new DraggedItem(g, lc));
+	    } else {
+	    	hand.add(new DraggedItem(g, lc));
+	    }
 	    updhand();
 	} else if(place == "chr") {
 	    studywnd = add(new StudyWnd());
@@ -1084,6 +1106,7 @@ public class GameUI extends ConsoleHost implements Console.Directory {
 	    }
 	}
 	if(w instanceof GItem) {
+	    Collection<DraggedItem> hand = handHidden ? handSave : this.hand; 
 	    for(Iterator<DraggedItem> i = hand.iterator(); i.hasNext();) {
 		DraggedItem di = i.next();
 		if(di.item == w) {

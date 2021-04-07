@@ -14,21 +14,23 @@ public enum GobTag {
     PIG, SOW, HOG, PIGLET,
     SHEEP, EWE, RAM, LAMB,
     
-    MENU, PICKUP;
+    PLAYER, ME, FRIEND, FOE,
+    
+    MENU, PICKUP, HIDDEN;
     
     private static final String[] AGGRO = {
-        "/bear", "/boar", "/troll", "/wolverine", "/badger", "/adder"
+        "/bear", "/boar", "/troll", "/wolverine", "/badger", "/adder", "/wolf", "/walrus", "/lynx"
     };
     
     
     private static final String[] ANIMALS = {
-        "/fox", "/swan", "/bat", "/beaver"
+        "/fox", "/swan", "/bat", "/beaver", "/moose", "/reddeer"
     };
     
     private static final String[] CRITTERS = {
         "/rat", "/swan", "/squirrel", "/silkmoth", "/frog", "/rockdove", "/quail", "/toad", "/grasshopper",
         "/ladybug", "/forestsnail", "/dragonfly", "/forestlizard", "/waterstrider", "/firefly", "/sandflea",
-        "/rabbit", "/crab", "/cavemoth", "/grub", "/hedgehog"
+        "/rabbit", "/crab", "/cavemoth", "/hedgehog", "/stagbeetle", "jellyfish", "/mallard"
     };
     
     private static final boolean DBG = false;
@@ -53,6 +55,16 @@ public enum GobTag {
                 tags.add(BUSH);
             } else if(name.startsWith("gfx/terobjs/herbs/")) {
                 tags.add(HERB);
+            } else if(name.startsWith("gfx/borka/body")) {
+                tags.add(PLAYER);
+                Boolean me = gob.isMe();
+                if(me != null) {
+                    if(me) {
+                        tags.add(ME);
+                    } else {
+                        tags.add(KinInfo.isFoe(gob) ? FOE : FRIEND);
+                    }
+                }
             } else if(name.startsWith("gfx/kritter/")) {
                 if(domesticated(gob, name, tags)) {
                     tags.add(ANIMAL);

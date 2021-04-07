@@ -64,6 +64,7 @@ public class OCache implements Iterable<Gob> {
     private static Map<Long, DamageSprite> gobdmgs = new HashMap<Long, DamageSprite>();
     public static boolean isfight = false;
     private final Collection<ChangeCallback> cbs = new WeakList<ChangeCallback>();
+    public final PathVisualizer paths = new PathVisualizer();
 
     public interface ChangeCallback {
 	public void added(Gob ob);
@@ -160,6 +161,7 @@ public class OCache implements Iterable<Gob> {
 	    copy.forEach(task);
 	else
 	    copy.parallelStream().forEach(task);
+	paths.tick(dt);
     }
 
     public void gtick(Render g) {

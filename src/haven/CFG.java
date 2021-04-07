@@ -3,15 +3,12 @@ package haven;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import haven.QualityList.SingleType;
+import haven.PathVisualizer.PathCategory;
 import haven.rx.BuffToggles;
 import me.ender.Reflect;
 
 import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class CFG<T> {
     public static final CFG<String> VERSION = new CFG<>("version", "");
@@ -20,6 +17,8 @@ public class CFG<T> {
     public static final CFG<Boolean> DISPLAY_GOB_INFO = new CFG<>("display.gob_info", false);
     public static final CFG<Boolean> DISPLAY_GOB_HITBOX = new CFG<>("display.gob_hitbox", false);
     public static final CFG<Boolean> DISPLAY_GOB_HITBOX_TOP = new CFG<>("display.gob_hitbox_top", false);
+    public static final CFG<Boolean> DISPLAY_GOB_PATHS = new CFG<>("display.gob_paths.show", false);
+    public static final CFG<Set<PathCategory>> DISPLAY_GOB_PATHS_FOR = new CFG<>("display.gob_paths.categories", PathVisualizer.DEF_CATEGORIES, new TypeToken<Set<PathCategory>>(){});
     public static final CFG<Boolean> HIDE_TREES = new CFG<>("display.hide_gobs", false);
     public static final CFG<Boolean> DISPLAY_FOD_CATEGORIES = new CFG<>("display.food_category", true);
     public static final CFG<Boolean> SHOW_GOB_RADIUS = new CFG<>("display.show_gob_radius", false);
@@ -28,7 +27,8 @@ public class CFG<T> {
     public static final CFG<Boolean> SHOW_TOOLBELT_0 = new CFG<>("general.toolbelt0", true);
     public static final CFG<Boolean> SHOW_TOOLBELT_1 = new CFG<>("general.toolbelt1", false);
     public static final CFG<Integer> AUTO_PICK_RADIUS = new CFG<>("general.auto_pick_radius", 55);
-
+    
+    public static final CFG<Boolean> DISABLE_UI_HIDING = new CFG<>("ui.disable_ui_hide", true);
     public static final CFG<Boolean> ALT_COMBAT_UI = new CFG<>("ui.combat.alt_ui", false);
     public static final CFG<Boolean> SIMPLE_COMBAT_OPENINGS = new CFG<>("ui.combat.simple_openings", true);
     public static final CFG<Boolean> SHOW_COMBAT_DMG = new CFG<>("ui.combat.show_dmg", true);
@@ -45,7 +45,8 @@ public class CFG<T> {
     public static final CFG<Boolean> MMAP_SHOW_BIOMES = new CFG<>("ui.mmap_biomes", true);
     public static final CFG<Boolean> MENU_SINGLE_CTRL_CLICK = new CFG<>("ui.menu_single_ctrl_click", true);
     public static final CFG<Boolean> MENU_ADD_PICK_ALL = new CFG<>("ui.menu_add_pick_all", false);
-
+    
+    public static final CFG<Map<String, Map<String, Boolean>>> WARN_CONFIG = new CFG<>("general.warning", new HashMap<>());
     public static final CFG<Boolean> REAL_TIME_CURIO = new CFG<>("ui.real_time_curio", false);
     public static final CFG<Boolean> SHOW_CURIO_LPH = new CFG<>("ui.show_curio_lph", false);
     public static final CFG<Boolean> SHOW_ITEM_DURABILITY = new CFG<>("ui.item_durability", false);
@@ -57,23 +58,24 @@ public class CFG<T> {
     public static final CFG<Boolean> HUNGER_METER = new CFG<>("ui.hunger_meter", false);
 
     public static final CFG<Float> CAMERA_BRIGHT = new CFG<>("camera.bright", 0f);
-
+    public static final CFG<Boolean> CAMERA_INVERT_X = new CFG<>("camera.invert_x", false);
+    public static final CFG<Boolean> CAMERA_INVERT_Y = new CFG<>("camera.invert_y", false);
+    
     public static final CFG<Boolean> Q_SHOW_SINGLE = new CFG<>("ui.q.showsingle", true);
-    public static final CFG<SingleType> Q_SINGLE_TYPE = new CFG<>("ui.q.singletype", SingleType.Average);
-    public static final CFG<Boolean> Q_SHOW_SHIFT = new CFG<>("ui.q.showshift", true);
-    public static final CFG<SingleType> Q_SHIFT_TYPE = new CFG<>("ui.q.shifttype", SingleType.All);
-    public static final CFG<Boolean> Q_SHOW_ALT = new CFG<>("ui.q.showalt", true);
-    public static final CFG<SingleType> Q_ALT_TYPE = new CFG<>("ui.q.alttype", SingleType.All);
-    public static final CFG<Boolean> Q_SHOW_CTRL = new CFG<>("ui.q.showctrl", true);
-    public static final CFG<SingleType> Q_CTRL_TYPE = new CFG<>("ui.q.ctrltype", SingleType.All);
+    
+    public static final CFG<Boolean> AUTOMAP_UPLOAD = new CFG<>("automap.upload", false);
+    public static final CFG<Boolean> AUTOMAP_TRACK = new CFG<>("automap.track", false);
+    public static final CFG<Set<BuddyWnd.Group>> AUTOMAP_MARKERS = new CFG<>("automap.markers", new HashSet<>(), new TypeToken<Set<BuddyWnd.Group>>(){});
+    public static final CFG<String> AUTOMAP_ENDPOINT = new CFG<>("automap.andpoint", "");
 
     private static final String CONFIG_JSON = "config.json";
     private static final Map<Object, Object> cfg;
     private static final Map<String, Object> cache = new HashMap<>();
-    private static final Gson gson;
+    public static final Gson gson;
     private final String path;
     public final T def;
-    private List<Observer<T>> observers = new LinkedList<>();
+    private final Type t;
+    private final List<Observer<T>> observers = new LinkedList<>();
 
     static {
 	gson = (new GsonBuilder()).setPrettyPrinting().create();
@@ -90,8 +92,8 @@ public class CFG<T> {
 	cfg = tmp;
 
 	BuffToggles.toggles.forEach(toggle -> toggle.cfg(
-	    new CFG<Boolean>("display.buffs."+toggle.action, true),
-	    new CFG<Boolean>("general.start_toggle."+toggle.action, false)
+	    new CFG<>("display.buffs." + toggle.action, true),
+	    new CFG<>("general.start_toggle." + toggle.action, false)
 	));
     }
 
@@ -99,9 +101,14 @@ public class CFG<T> {
 	void updated(CFG<T> cfg);
     }
 
-    CFG(String path, T def) {
+    CFG(String path, T def, TypeToken<T> t) {
 	this.path = path;
 	this.def = def;
+	this.t = t == null ? null : t.getType();
+    }
+    
+    CFG(String path, T def) {
+	this(path, def, null);
     }
 
     public T get() {
@@ -144,11 +151,15 @@ public class CFG<T> {
 		    Class<?> defClass = name.def.getClass();
 		    if(defClass.isAssignableFrom(data.getClass())) {
 			value = (E) data;
+		    } else if(name.t != null) {
+			value = gson.fromJson(gson.toJson(data), name.t);
+		    } else if(Map.class.isAssignableFrom(defClass) && Map.class.isAssignableFrom(data.getClass())) {
+			value = (E) data;
 		    } else if(Number.class.isAssignableFrom(defClass)) {
 			Number n = (Number) data;
 			value = (E) Utils.num2value(n, (Class<? extends Number>)defClass);
 		    } else if(Enum.class.isAssignableFrom(defClass)) {
-			Class<? extends Enum> enumType = Reflect.getEnumSuperclass(defClass);
+			@SuppressWarnings("rawtypes") Class<? extends Enum> enumType = Reflect.getEnumSuperclass(defClass);
 			if(enumType != null) {
 			    value = (E) Enum.valueOf(enumType, data.toString());
 			}
@@ -190,6 +201,7 @@ public class CFG<T> {
 	Config.saveFile(CONFIG_JSON, gson.toJson(cfg));
     }
 
+    @SuppressWarnings("rawtypes")
     private static Object retrieve(CFG name) {
 	String[] parts = name.path.split("\\.");
 	Object cur = cfg;

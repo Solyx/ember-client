@@ -44,6 +44,7 @@ import haven.render.sl.Uniform;
 import haven.render.sl.Type;
 
 public class MapView extends PView implements DTarget, Console.Directory {
+    public static final Resource.Named inspectCursor = Resource.local().loadwait("gfx/hud/curs/studyx").indir();
     public static boolean clickdb = false;
     public static long plgob = -1;
     public Coord2d cc;
@@ -60,6 +61,7 @@ public class MapView extends PView implements DTarget, Console.Directory {
     public static int plobgran = Utils.getprefi("plobgran", 8);
     private static final Map<String, Class<? extends Camera>> camtypes = new HashMap<String, Class<? extends Camera>>();
     private long mapupdate = 0;
+    String ttip = null;
 
     private boolean showgrid;
 
@@ -113,6 +115,13 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	public abstract void tick(double dt);
 
 	public String stats() {return("N/A");}
+    
+	protected Coord inversion(Coord c, Coord o) {
+	    return c.add(
+		CFG.CAMERA_INVERT_X.get() ? (o.x - c.x) * 2 : 0,
+		CFG.CAMERA_INVERT_Y.get() ? (o.y - c.y) * 2 : 0
+	    );
+	}
     }
     
     public class FollowCam extends Camera {
@@ -141,10 +150,24 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	}
 	
 	public void drag(Coord c) {
+	    c = inversion(c, dragorig);
 	    tangl = anglorig + ((float)(c.x - dragorig.x) / 100.0f);
 	    tangl = tangl % ((float)Math.PI * 2.0f);
 	}
-
+    
+	@Override
+	public void rotate(Coord r) {
+	    tangl = tangl + (25 * r.x / 100.0f);
+	    tangl = tangl % ((float)Math.PI * 2.0f);
+	    wheel(Coord.z, 5 * r.y);
+	}
+    
+	@Override
+	public void reset() {
+	    elev = telev = (float)Math.PI / 6.0f;
+	    angl = tangl = 0.0f;
+	}
+    
 	private double f0 = 0.2, f1 = 0.5, f2 = 0.9;
 	private double fl = Math.sqrt(2);
 	private double fa = ((fl * (f1 - f0)) - (f2 - f0)) / (fl - 2);
@@ -244,6 +267,7 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	}
 	
 	public void drag(Coord c) {
+	    c = inversion(c, dragorig);
 	    elev = elevorig - ((float)(c.y - dragorig.y) / 100.0f);
 	    if(elev < 0.0f) elev = 0.0f;
 	    if(elev > (Math.PI / 2.0)) elev = (float)Math.PI / 2.0f;
@@ -257,6 +281,23 @@ public class MapView extends PView implements DTarget, Console.Directory {
 		d = 5;
 	    dist = d;
 	    return(true);
+	}
+    
+	@Override
+	public void rotate(Coord r) {
+	    Coord c = r.mul(10, 10);
+	    elev = elev - ((float) c.y / 100.0f);
+	    if(elev < 0.0f) elev = 0.0f;
+	    if(elev > (Math.PI / 2.0)) elev = (float) Math.PI / 2.0f;
+	    angl = angl + ((float) c.x / 100.0f);
+	    angl = angl % ((float) Math.PI * 2.0f);
+	}
+    
+	@Override
+	public void reset() {
+	    dist = 50.0f;
+	    elev = (float) Math.PI / 4.0f;
+	    angl = 0.0f;
 	}
     }
     static {camtypes.put("worse", SimpleCam.class);}
@@ -302,8 +343,25 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	    dragorig = c;
 	    return(true);
 	}
-
+    
+	@Override
+	public void rotate(Coord r) {
+	    Coord c = r.mul(25, 20);
+	    telev = telev - ((float)(c.y) / 100.0f);
+	    if(telev < 0.0f) telev = 0.0f;
+	    if(telev > (Math.PI / 2.0)) telev = (float)Math.PI / 2.0f;
+	    tangl = tangl + ((float)(c.x) / 100.0f);
+	}
+    
+	@Override
+	public void reset() {
+	    tdist = 50.0f;
+	    telev = (float) Math.PI / 4.0f;
+	    tangl = 0.0f;
+	}
+    
 	public void drag(Coord c) {
+	    c = inversion(c, dragorig);
 	    telev = elevorig - ((float)(c.y - dragorig.y) / 100.0f);
 	    if(telev < 0.0f) telev = 0.0f;
 	    if(telev > (Math.PI / 2.0)) telev = (float)Math.PI / 2.0f;
@@ -365,6 +423,7 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	}
 
 	public void drag(Coord c) {
+	    c = inversion(c, dragorig);
 	    angl = anglorig + ((float)(c.x - dragorig.x) / 100.0f);
 	    angl = angl % ((float)Math.PI * 2.0f);
 	}
@@ -425,8 +484,6 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	    while(angl > pi2) {angl -= pi2; tangl -= pi2; anglorig -= pi2;}
 	    while(angl < 0)   {angl += pi2; tangl += pi2; anglorig += pi2;}
 	    if(Math.abs(tangl - angl) < 0.001) {
-		while (tangl < 0) {tangl += 2 * Math.PI;}
-		while (tangl > 2 * Math.PI) {tangl -= 2 * Math.PI;}
 		angl = tangl;
 	    } else
 		jc = cc;
@@ -445,6 +502,7 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	}
 
 	public void drag(Coord c) {
+	    c = inversion(c, dragorig);
 	    tangl = anglorig + ((float)(c.x - dragorig.x) / 100.0f);
 	}
 
@@ -533,6 +591,7 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	basic.add(new Outlines(false));
 	basic.add(this.gobs = new Gobs());
 	basic.add(this.terrain = new Terrain());
+	basic.add(glob.oc.paths);
 	this.clickmap = new ClickMap();
 	clmaptree.add(clickmap);
 	setcanfocus(true);
@@ -2049,8 +2108,7 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	    
 	    if(inf != null) {
 		args = Utils.extend(args, inf.clickargs());
-		//TODO: gob click detection
-		Gob gob = null;//inf.gob();
+		Gob gob = Gob.from(inf.ci);
 		if(gob != null) {
 		    if(clickb == 3) {FlowerMenu.lastGob(gob);}
 		    if(ui.modmeta && clickb == 1) {
@@ -2079,6 +2137,7 @@ public class MapView extends PView implements DTarget, Console.Directory {
     public boolean mousedown(Coord c, int button) {
 	parent.setfocus(this);
 	Loader.Future<Plob> placing_l = this.placing;
+	if(button == 3) {stopInspecting();}
 	if(button == 2) {
 	    if(((Camera)camera).click(c)) {
 		camdrag = ui.grabmouse(this);
@@ -2105,6 +2164,8 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	    if((placing.lastmc == null) || !placing.lastmc.equals(c)) {
 		placing.new Adjust(c, ui.modflags()).run();
 	    }
+	} else {
+	    inspect(c);
 	}
     }
     
@@ -2183,6 +2244,8 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	if(selection != null) {
 	    if(selection.tt != null)
 		return(selection.tt);
+	} else if(ttip != null) {
+	    return ttip;
 	}
 	return(super.tooltip(c, prev));
     }
@@ -2431,7 +2494,12 @@ public class MapView extends PView implements DTarget, Console.Directory {
     
     public void zoomCamera(int amount) { camera.wheel(Coord.z, amount); }
     
-    public void rotateCamera(Coord r) { camera.rotate(r); }
+    public void rotateCamera(Coord r) {
+	camera.rotate(r.mul(
+	    CFG.CAMERA_INVERT_X.get() ? -1 : 1,
+	    CFG.CAMERA_INVERT_Y.get() ? -1 : 1
+	)); 
+    }
     
     public void resetCamera() { camera.reset(); }
     
@@ -2445,5 +2513,65 @@ public class MapView extends PView implements DTarget, Console.Directory {
 		
 	    }
 	};
+    }
+    
+    public boolean isInspecting() {
+	return cursor == inspectCursor;
+    }
+    
+    public void startInspecting() {
+	if(cursor == null) {
+	    cursor = inspectCursor;
+	    inspect(rootxlate(ui.mc));
+	}
+    }
+    
+    public void stopInspecting() {
+	if(cursor == inspectCursor) {
+	    cursor = null;
+	}
+	ttip = null;
+    }
+    
+    public void toggleInspectMode() {
+	if(isInspecting()) {
+	    stopInspecting();
+	} else {
+	    startInspecting();
+	}
+    }
+    
+    private void inspect(Coord c) {
+	if(cursor == inspectCursor) {
+	    new Hittest(c) {
+		@Override
+		protected void hit(Coord pc, Coord2d mc, ClickData inf) {
+		    ttip = null;
+		    if(inf != null) {
+			Gob gob = Gob.from(inf.ci);
+			if(gob != null) {
+			    Resource res = gob.getres();
+			    if(res != null) {
+				ttip = res.name;
+			    }
+			}
+		    } else {
+			MCache mCache = ui.sess.glob.map;
+			int tile = mCache.gettile(mc.div(tilesz).floor());
+			Resource res = mCache.tilesetr(tile);
+			if(res != null) {
+			    ttip = res.name;
+			}
+		    }
+		}
+		
+		@Override
+		protected void nohit(Coord pc) {
+		    ttip = null;
+		}
+	    }.run();
+	} else {
+	    ttip = null;
+	}
     }
 }

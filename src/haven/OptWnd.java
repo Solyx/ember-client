@@ -27,13 +27,15 @@
 package haven;
 
 
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.awt.event.KeyEvent;
+import java.util.Set;
 
 public class OptWnd extends Window {
     public static final Coord PANEL_POS = new Coord(220, 30);
     public static final Coord Q_TYPE_PADDING = new Coord(3, 0);
-    private final Panel display, general, camera, shortcuts;
+    private final Panel display, general, camera, shortcuts, mapping;
     public final Panel main, video, audio, keybind;
     public Panel current;
     private WidgetList<KeyBinder.ShortcutWidget> shortcutList;
@@ -428,7 +430,7 @@ public class OptWnd extends Window {
 
 	    public void set(KeyMatch key) {
 		super.set(key);
-		cmd.set(key);
+		cmd.set(KeyMatch2.from(key));
 	    }
 
 	    public void draw(GOut g) {
@@ -576,6 +578,7 @@ public class OptWnd extends Window {
 	general = add(new Panel());
 	camera = add(new Panel());
 	shortcuts = add(new Panel());
+	mapping = add(new Panel());
 
 	addPanelButton("Video settings", 'v', video, 0, 0);
 	addPanelButton("Audio settings", 'a', audio, 0, 1);
@@ -586,6 +589,7 @@ public class OptWnd extends Window {
 	addPanelButton("Display settings", 'd', display, 1, 1);
 	addPanelButton("Radar settings", 'r', Action.TOGGLE_MINIMAP_ICONS_SETTINGS, 1, 2);
 	addPanelButton("Global shortcuts", 's', shortcuts, 1, 3);
+	addPanelButton("Mapping settings", 'm', mapping, 1, 4);
 
 	int y = 0;
 	Widget prev;
@@ -639,6 +643,7 @@ public class OptWnd extends Window {
 	initDisplayPanel();
 	initGeneralPanel();
 	initCameraPanel();
+	initMappingPanel();
 	main.pack();
 	chpanel(main);
     }
@@ -659,6 +664,8 @@ public class OptWnd extends Window {
 
     private void initCameraPanel() {
 	int x = 0, y = 0, my = 0;
+	int STEP = UI.scale(25);
+	int BIG_STEP = UI.scale(35);
 
 	int tx = x + camera.add(new Label("Camera:"), x, y).sz.x + 5;
 	camera.add(new Dropbox<String>(100, 5, 16) {
@@ -686,10 +693,10 @@ public class OptWnd extends Window {
 		}
 	    }
 	}, tx, y).sel = MapView.defcam();
-
-	y += 35;
+    
+	y += BIG_STEP;
 	camera.add(new Label("Brighten view"), x, y);
-	y += 15;
+	y += UI.scale(15);
 	camera.add(new HSlider(UI.scale(200), 0, 500, 0) {
 	    public void changed() {
 		CFG.CAMERA_BRIGHT.set(val / 1000.0f);
@@ -698,12 +705,17 @@ public class OptWnd extends Window {
 		}
 	    }
 	}, x, y).val = (int) (1000 * CFG.CAMERA_BRIGHT.get());
-
-
-	y += 25;
+    
+	y += BIG_STEP;
+	camera.add(new CFGBox("Invert horizontal camera rotation", CFG.CAMERA_INVERT_X), x, y);
+    
+	y += STEP;
+	camera.add(new CFGBox("Invert vertical camera rotation", CFG.CAMERA_INVERT_Y), x, y);
+    
+	y += BIG_STEP;
 	my = Math.max(my, y);
 
-	camera.add(new PButton(UI.scale(200), "Back", 27, main), 0, my + 35);
+	camera.add(new PButton(UI.scale(200), "Back", 27, main), 0, my);
 	camera.pack();
     }
 
@@ -753,6 +765,9 @@ public class OptWnd extends Window {
 	general.add(new CFGBox("Add \"Pick All\" option", CFG.MENU_ADD_PICK_ALL, "If checked, will add new option that will allow to pick all same objects."), x, y);
     
 	y += STEP;
+	general.add(new CFGBox("Always show UI on start", CFG.DISABLE_UI_HIDING), x, y);
+	
+	y += STEP;
 	general.add(new CFGBox("Show F-key tool bar", CFG.SHOW_TOOLBELT_0), x, y);
     
 	y += STEP;
@@ -773,7 +788,19 @@ public class OptWnd extends Window {
 	}, x, y);
     
 	y += UI.scale(35);
-	general.add(new Button(UI.scale(150), "Toggle at login") {
+	general.add(new Button(UI.scale(150), "Warning settings", false) {
+	    @Override
+	    public void click() {
+		if(ui.gui != null) {
+		    GobWarning.WarnCFGWnd.toggle(ui.gui);
+		} else {
+		    GobWarning.WarnCFGWnd.toggle(ui.root);
+		}
+	    }
+	}, x, y);
+ 
+	y += STEP;
+	general.add(new Button(UI.scale(150), "Toggle at login", false) {
 	    @Override
 	    public void click() {
 		if(ui.gui != null) {
@@ -833,7 +860,20 @@ public class OptWnd extends Window {
 	
 	y += STEP;
 	display.add(new CFGBox("Draw hitboxes on top", CFG.DISPLAY_GOB_HITBOX_TOP, "Draws hitboxes on top of everything", true), x, y);
-
+ 
+	y += STEP;
+	int tx = display.add(new CFGBox("Draw gob paths", CFG.DISPLAY_GOB_PATHS, "Draws lines where gobs are moving", true), x, y).sz.x;
+	display.add(new IButton("gfx/hud/opt", "", "-d", "-h") {
+	    @Override
+	    public void click() {
+		if(ui.gui != null) {
+		    PathVisualizer.CategoryOpts.toggle(ui.gui);
+		} else {
+		    PathVisualizer.CategoryOpts.toggle(ui.root);
+		}
+	    }
+	}, x + tx + UI.scale(10), y + UI.scale(1));
+	
 	y += STEP;
 	display.add(new CFGBox("Show food categories", CFG.DISPLAY_FOD_CATEGORIES, "Shows list of food categories in the tooltip", true), x, y);
 
@@ -856,7 +896,7 @@ public class OptWnd extends Window {
 	display.add(new CFGBox("Show object radius", CFG.SHOW_GOB_RADIUS, "Shows radius of mine supports, beehives etc.", true), x, y);
 
 	y += STEP;
-	display.add(new Button(UI.scale(150), "Show as buffs") {
+	display.add(new Button(UI.scale(150), "Show as buffs", false) {
 	    @Override
 	    public void click() {
 		if(ui.gui != null) {
@@ -871,22 +911,9 @@ public class OptWnd extends Window {
 	x += UI.scale(250);
 	y = 0;
 	my = Math.max(my, y);
-	int tx = x + display.add(new CFGBox("Show quality as:", CFG.Q_SHOW_SINGLE), x, y).sz.x;
-	display.add(new QualityBox(UI.scale(100), 6, UI.scale(16), CFG.Q_SINGLE_TYPE), tx + UI.scale(5), y);
-
+	display.add(new CFGBox("Show item quality", CFG.Q_SHOW_SINGLE), x, y);
+	
 	y += STEP;
-	display.add(new CFGBox("Show on SHIFT:", CFG.Q_SHOW_SHIFT), x, y);
-	display.add(new QualityBox(UI.scale(100), 6, UI.scale(16), CFG.Q_SHIFT_TYPE), tx + UI.scale(5), y);
-
-	y += STEP;
-	display.add(new CFGBox("Show on CTRL:", CFG.Q_SHOW_CTRL), x, y);
-	display.add(new QualityBox(UI.scale(100), 6, UI.scale(16), CFG.Q_CTRL_TYPE), tx + UI.scale(5), y);
-
-	y += STEP;
-	display.add(new CFGBox("Show on ALT:", CFG.Q_SHOW_ALT), x, y);
-	display.add(new QualityBox(UI.scale(100), 6, UI.scale(16), CFG.Q_ALT_TYPE), tx + UI.scale(5), y);
-
-	y += 50;
 	display.add(new CFGBox("Real time curios", CFG.REAL_TIME_CURIO, "Show curiosity study time in real life hours, instead of server hours"), new Coord(x, y));
 
 	y += STEP;
@@ -1000,6 +1027,69 @@ public class OptWnd extends Window {
 	shortcuts.pack();
 	shortcuts.add(new PButton(UI.scale(200), "Back", 27, main), shortcuts.sz.x / 2 - 100, shortcuts.sz.y + 35);
 	shortcuts.pack();
+    }
+    
+    private void initMappingPanel() {
+	int x = 0, y = 0;
+	int STEP = UI.scale(25);
+	
+	mapping.add(new CFGBox("Upload enabled", CFG.AUTOMAP_UPLOAD), x, y);
+	y += STEP;
+	
+	mapping.add(new CFGBox("Tracking enabled", CFG.AUTOMAP_TRACK), x, y);
+	y += STEP;
+	
+	mapping.add(new Label("Mapping URL:"), x, y);
+	y += STEP;
+	
+	mapping.add(new TextEntry(UI.scale(250), CFG.AUTOMAP_ENDPOINT.get()) {
+	    @Override
+	    public boolean keydown(KeyEvent ev) {
+		if(!parent.visible)
+		    return false;
+		CFG.AUTOMAP_ENDPOINT.set(text);
+		return buf.key(ev);
+	    }
+	}, x, y);
+ 
+	y += STEP;
+	mapping.add(new Label("Upload custom markers:"), x, y);
+ 
+	y += STEP;
+	mapping.add(new BuddyWnd.GroupSelector(-1) {
+	    {
+		Set<BuddyWnd.Group> groups = CFG.AUTOMAP_MARKERS.get();
+		for (BuddyWnd.Group g : groups) {
+		    this.groups[g.ordinal()].select();
+		}
+	    }
+	    
+	    @Override
+	    public void update(int idx) {
+		if(idx >= 0 && idx < this.groups.length) {
+		    BuddyWnd.GroupRect group = this.groups[idx];
+		    if(group.selected()) {
+			group.unselect();
+		    } else {
+			group.select();
+		    }
+		    
+		    Set<BuddyWnd.Group> selected = new HashSet<>();
+		    for (int i = 0; i < this.groups.length; i++) {
+			if(this.groups[i].selected()) {
+			    selected.add(BuddyWnd.Group.values()[i]);
+			}
+		    }
+		    CFG.AUTOMAP_MARKERS.set(selected);
+		}
+	    }
+	}, x, y);
+ 
+	y += STEP;
+	
+	mapping.add(new PButton(UI.scale(200), "Back", 27, main), x, y);
+	
+	mapping.pack();
     }
     
     public OptWnd() {
