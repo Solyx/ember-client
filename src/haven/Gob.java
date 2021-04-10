@@ -402,7 +402,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
     
     public Boolean isMe() {
 	if(isMe == null) {
-	    if(glob.sess.ui.gui == null || glob.sess.ui.gui.map == null) {
+	    if(glob.sess.ui.gui == null || glob.sess.ui.gui.map == null || glob.sess.ui.gui.map.plgob < 0) {
 		return null;
 	    } else {
 		isMe = id == glob.sess.ui.gui.map.plgob;
@@ -752,6 +752,13 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
 	return(null);
     }
     
+    public String resid() {
+	Drawable d = getattr(Drawable.class);
+	if(d != null)
+	    return d.resId();
+	return null;
+    }
+    
     private static final ClassResolver<Gob> ctxr = new ClassResolver<Gob>()
 	.add(Glob.class, g -> g.glob)
 	.add(Session.class, g -> g.glob.sess);
@@ -912,10 +919,15 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
 	h.start();
     }
     
+    public String tooltip() {
+        return resid();
+    }
+    
     public void drawableUpdated() {
 	if(updateseq == 0) {return;}
 	updateTags();
 	updateHitbox();
+	updateIcon();
 	updateTreeVisibility();
     }
     
@@ -949,6 +961,15 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
 		    untag(GobTag.HIDDEN);
 		}
 		updateHitbox();
+	    }
+	}
+    }
+    
+    public void updateIcon() {
+	if(getattr(GobIcon.class) == null) {
+	    GobIcon icon = Radar.getIcon(this);
+	    if(icon != null) {
+		setattr(icon);
 	    }
 	}
     }
