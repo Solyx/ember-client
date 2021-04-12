@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 
-public class GobIconSettings extends Window {
+public class GobIconSettings extends WindowX {
     public static final String FILTER_DEFAULT = "Start typing to filter";
     public static final Coord FILTER_C = UI.scale(445, 0);
     public final GobIcon.Settings conf;
@@ -175,8 +175,8 @@ public class GobIconSettings extends Window {
 	filter = adda(new Label(FILTER_DEFAULT), FILTER_C, 1, 0);
 	h += UI.scale(5);
     
-	CategoryList categories = add(new CategoryList(UI.scale(200), DBG ? 12 : 24, elh), 0, h);
-	list = add(new IconList(UI.scale(250), DBG ? 12 : 25), UI.scale(210), h);
+	CategoryList categories = add(new CategoryList(UI.scale(200), 8, elh), 0, h);
+	list = add(new IconList(UI.scale(250), UI.unscale(DBG ? 13 : 26)), UI.scale(210), h);
 	add(new CheckBox("Notification on newly seen icons") {
 	    {this.a = conf.notify;}
 	

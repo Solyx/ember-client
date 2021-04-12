@@ -32,7 +32,7 @@ import java.util.LinkedList;
 import java.awt.event.KeyEvent;
 import java.util.Set;
 
-public class OptWnd extends Window {
+public class OptWnd extends WindowX {
     public static final Coord PANEL_POS = new Coord(220, 30);
     public static final Coord Q_TYPE_PADDING = new Coord(3, 0);
     private final Panel display, general, camera, shortcuts, mapping;
@@ -633,6 +633,25 @@ public class OptWnd extends Window {
 		    ui.audio.amb.setvolume(val / 1000.0);
 		}
 	    }, prev.pos("bl").adds(0, 2));
+    
+	prev = audio.add(new Label("Audio buffer size"), prev.pos("bl").adds(0, 5));
+	Label value = audio.add(new Label.Untranslated(""), prev.pos("ur").adds(15, 0));
+	prev = audio.add(new HSlider(UI.scale(200), 1024, 44100, 1024) {
+	    protected void attach(UI ui) {
+		super.attach(ui);
+		val = Audio.bufsize / 4;
+		value.settext(String.format("%d", Audio.bufsize));
+	    }
+	
+	    public void changed() {
+		try {
+		    value.settext(String.format("%d", val));
+		    Audio.audiobuf(val);
+		} catch (Exception ignored) {
+		}
+	    }
+	}, prev.pos("bl").adds(0, 2));
+	
 	audio.add(new PButton(UI.scale(200), "Back", 27, this.main), prev.pos("bl").adds(0, 30));
 	audio.pack();
 
@@ -750,6 +769,31 @@ public class OptWnd extends Window {
 	general.add(new CFGBox("Output missing translation lines", L10N.DBG), x, y);
     
 	y += STEP;
+	tx = x + general.add(new Label("UI Theme:"), x, y).sz.x + UI.scale(5);
+	general.add(new Dropbox<Theme>(UI.scale(100), 5, UI.scale(16)) {
+	    @Override
+	    protected Theme listitem(int i) {
+		return Theme.values()[i];
+	    }
+
+	    @Override
+	    protected int listitems() {
+		return Theme.values().length;
+	    }
+
+	    @Override
+	    protected void drawitem(GOut g, Theme item, int i) {
+		g.atext(item.name(), UI.scale(3, 8), 0, 0.5);
+	    }
+
+	    @Override
+	    public void change(Theme item) {
+		super.change(item);
+		if(!item.equals(CFG.THEME.get())) CFG.THEME.set(item, true);
+	    }
+	}, tx, y).change(CFG.THEME.get());
+	
+	y += STEP;
 	general.add(new CFGBox("Store minimap tiles", CFG.STORE_MAP), x, y);
     
 	y += STEP;
@@ -775,9 +819,12 @@ public class OptWnd extends Window {
 	general.adda(new Speedget.SpeedSelector(UI.scale(100)), new Coord(x + tsz.x + UI.scale(5), y + tsz.y / 2), 0, 0.5);
     
 	y += STEP;
+	general.add(new CFGBox("Auto pickup only visible", CFG.AUTO_PICK_ONLY_RADAR, "If on will pickup only objects with enabled minimap icons"), x, y);
+	
+	y += STEP;
 	Label label = general.add(new Label(String.format("Auto pickup radius: %.2f", CFG.AUTO_PICK_RADIUS.get() / 11.0)), x, y);
 	y += UI.scale(15);
-	general.add(new CFGHSlider(UI.scale(150), CFG.AUTO_PICK_RADIUS, 33, 88) {
+	general.add(new CFGHSlider(UI.scale(150), CFG.AUTO_PICK_RADIUS, 33, 352) {
 	    @Override
 	    public void changed() {
 		label.settext(String.format("Auto pickup radius: %.02f", val / 11.0));
@@ -968,6 +1015,9 @@ public class OptWnd extends Window {
 	x += UI.scale(265);
 	y = 0;
 	display.add(new CFGBox("Use new combat UI", CFG.ALT_COMBAT_UI), x, y);
+    
+	y += STEP;
+	display.add(new CFGBox("Always mark current target", CFG.ALWAYS_MARK_COMBAT_TARGET , "Usually current target only marked when there's more than one"), x, y);
 	
 	y += STEP;
 	display.add(new CFGBox("Show combat damage", CFG.SHOW_COMBAT_DMG), x, y);

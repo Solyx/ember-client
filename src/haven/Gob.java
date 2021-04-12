@@ -26,6 +26,7 @@
 
 package haven;
 
+import java.awt.*;
 import java.util.*;
 import java.util.function.*;
 import haven.render.*;
@@ -34,6 +35,8 @@ import integrations.mapv4.MappingClient;
 import static haven.OCache.*;
 
 public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Skeleton.HasPose {
+    private static final Color COL_READY = new Color(16, 255, 16, 128);
+    private static final Color COL_EMPTY = new Color(64, 200, 250, 64);
     public Coord2d rc;
     public double a;
     public boolean virtual = false;
@@ -51,7 +54,11 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
     private GobDamageInfo damage;
     private Hitbox hitbox;
     private Boolean isMe = null;
+    private final GeneralGobInfo info;
     private GobWarning warning = null;
+    public StatusUpdates status = new StatusUpdates();
+    private final CustomColor customColor = new CustomColor();
+    private final Set<GobTag> tags = new HashSet<>();
     public static final ChangeCallback CHANGED = new ChangeCallback() {
 	@Override
 	public void added(Gob ob) {
@@ -131,6 +138,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
 	public void remove() {
 	    remove0();
 	    gob.ols.remove(this);
+	    gob.overlaysUpdated();
 	}
 
 	public void added(RenderTree.Slot slot) {
@@ -143,6 +151,27 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
 	public void removed(RenderTree.Slot slot) {
 	    if(slots != null)
 		slots.remove(slot);
+	}
+    }
+    
+    private static class CustomColor implements SetupMod {
+	Pipe.Op op = null;
+	Color c = null;
+    
+	boolean color(Color c) {
+	    boolean changed = !Objects.equals(c, this.c);
+	    if(c == null) {
+		op = null;
+	    } else {
+		op = new MixColor(c);
+	    }
+	    this.c = c;
+	    return changed;
+	}
+    
+	@Override
+	public Pipe.Op gobstate() {
+	    return op;
 	}
     }
 
@@ -225,7 +254,9 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
 	if(GobDamageInfo.has(this)) {
 	    addDmg();
 	}
-	setattr(new GeneralGobInfo(this));
+	setupmods.add(customColor);
+	info = new GeneralGobInfo(this);
+	setattr(info);
 	updwait(this::drawableUpdated, waiting -> {});
     }
 
@@ -265,9 +296,10 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
 	if(isMe == null) {
 	    isMe();
 	    if(isMe != null) {
-		updateTags();
+		tagsUpdated();
 	    }
 	}
+	updateState();
     }
 
     public void gtick(Render g) {
@@ -286,6 +318,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
 	ol.add0();
 	ols.add(ol);
 	overlayAdded(ol);
+	overlaysUpdated();
     }
     public void addol(Overlay ol) {
 	addol(ol, true);
@@ -479,12 +512,9 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
 	    if(ac == Drawable.class) {
 		if(a != prev) drawableUpdated();
 	    } else if(ac == KinInfo.class) {
-		updateTags();
+		tagsUpdated();
 	    } else if(ac == GobHealth.class) {
-		GeneralGobInfo info = getattr(GeneralGobInfo.class);
-		if(info != null) {
-		    info.clean();
-		}
+		status.update(StatusType.info);
 	    }
 	}
     }
@@ -923,15 +953,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
         return resid();
     }
     
-    public void drawableUpdated() {
-	if(updateseq == 0) {return;}
-	updateTags();
-	updateHitbox();
-	updateIcon();
-	updateTreeVisibility();
-    }
-    
-    public void updateHitbox() {
+    private void updateHitbox() {
 	if(updateseq == 0) {return;}
 	boolean hitboxEnabled = CFG.DISPLAY_GOB_HITBOX.get() || is(GobTag.HIDDEN);
 	if(hitboxEnabled) {
@@ -947,8 +969,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
 	}
     }
     
-    public void updateTreeVisibility() {
-	if(updateseq == 0) {return;}
+    private boolean updateVisibility() {
 	if(anyOf(GobTag.TREE, GobTag.BUSH)) {
 	    Drawable d = getattr(Drawable.class);
 	    Boolean needHide = CFG.HIDE_TREES.get();
@@ -960,12 +981,13 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
 		} else {
 		    untag(GobTag.HIDDEN);
 		}
-		updateHitbox();
+	    	return true;
 	    }
 	}
+	return false;
     }
     
-    public void updateIcon() {
+    private void updateIcon() {
 	if(getattr(GobIcon.class) == null) {
 	    GobIcon icon = Radar.getIcon(this);
 	    if(icon != null) {
@@ -976,16 +998,12 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
     
     public final Placed placed = new Placed();
     
-    private final Set<GobTag> tags = new HashSet<>();
-    
-    public void updateTags() {
-	if(updateseq == 0) {return;}
+    private void updateTags() {
 	Set<GobTag> tags = GobTag.tags(this);
 	synchronized (this.tags) {
 	    this.tags.clear();
 	    this.tags.addAll(tags);
 	}
-	updateWarnings();
     }
     
     public void tag(GobTag tag) {
@@ -997,8 +1015,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
     }
     
     private void updateWarnings() {
-	if(updateseq == 0) {return;}
-	if(!anyOf(GobTag.AGGRESSIVE, GobTag.FOE)) {
+	if(!GobWarning.needsWarning(this)) {
 	    warning = null;
 	    delattr(GobWarning.class);
 	} else if(warning == null) {
@@ -1030,5 +1047,101 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Sk
 	    return gi != null ? gi.gob : null;
 	}
 	return null;
+    }
+    
+    public void poseUpdated() {status.update(StatusType.pose);}
+    
+    public void idUpdated() {status.update(StatusType.id);}
+    
+    public void drawableUpdated() { status.update(StatusType.drawable); }
+    
+    public void overlaysUpdated() { status.update(StatusType.overlay); }
+    
+    public void kinUpdated() {status.update(StatusType.kin);}
+    
+    public void hitboxUpdated() {status.update(StatusType.hitbox);}
+    
+    public void visibilityUpdated() {status.update(StatusType.visibility);}
+    
+    public void infoUpdated() {status.update(StatusType.info);}
+    
+    public void iconUpdated() { status.update(StatusType.icon);}
+    
+    public void tagsUpdated() {status.update(StatusType.tags);}
+    
+    private void updateState() {
+	if(updateseq == 0 || !status.updated()) {return;}
+	StatusUpdates status = this.status;
+	this.status = new StatusUpdates();
+	
+	if(status.updated(StatusType.drawable, StatusType.kin, StatusType.id, StatusType.pose, StatusType.tags, StatusType.overlay)) {
+	    updateTags();
+	    status.update(StatusType.tags);
+	}
+	
+	if(status.updated(StatusType.drawable, StatusType.visibility, StatusType.tags)) {
+	    if(updateVisibility()) {
+		status.update(StatusType.visibility);
+	    }
+	}
+	
+	if(status.updated(StatusType.drawable, StatusType.hitbox, StatusType.visibility)) {
+	    updateHitbox();
+	}
+	
+	if(status.updated(StatusType.drawable, StatusType.id, StatusType.icon)) {
+	    updateIcon();
+	}
+	
+	if(status.updated(StatusType.tags)) {
+	    updateWarnings();
+	}
+	
+	if(status.updated(StatusType.info)) {
+	    info.clean();
+	}
+    
+	if(status.updated(StatusType.tags, StatusType.info)) {
+	    updateColor();
+	}
+    }
+    
+    private void updateColor() {
+	Color c = null;
+	if(CFG.DISPLAY_GOB_INFO.get()) {
+	    if(is(GobTag.EMPTY)) {
+		c = COL_EMPTY;
+	    } else if(is(GobTag.READY)) {
+		c = COL_READY;
+	    }
+	}
+	if(customColor.color(c)) {updstate();}
+    }
+    
+    private static class StatusUpdates {
+	private final Set<StatusType> updated = new HashSet<>();
+	
+	private void update(StatusType type) {
+	    synchronized (updated) {
+		updated.add(type);
+	    }
+	}
+	
+	private boolean updated(StatusType... types) {
+	    synchronized (updated) {
+		for (StatusType type : types) {
+		    if(updated.contains(type)) {return true;}
+		}
+	    }
+	    return false;
+	}
+	
+	private boolean updated() {
+	    return !updated.isEmpty();
+	}
+    }
+    
+    private enum StatusType {
+	drawable, overlay, tags, pose, id, info, kin, hitbox, icon, visibility;
     }
 }

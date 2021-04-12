@@ -12,6 +12,7 @@ import java.util.*;
 
 public class CFG<T> {
     public static final CFG<String> VERSION = new CFG<>("version", "");
+    public static final CFG<Integer> AUDIO_BUFFER = new CFG<>("display.audio.buffer", 4096);
     public static final CFG<Boolean> DISPLAY_KINNAMES = new CFG<>("display.kinnames", true);
     public static final CFG<Boolean> DISPLAY_KINSFX = new CFG<>("display.kinsfx", true);
     public static final CFG<Boolean> DISPLAY_FLAVOR = new CFG<>("display.flavor", true);
@@ -27,11 +28,14 @@ public class CFG<T> {
     public static final CFG<Boolean> STORE_MAP = new CFG<>("general.storemap", false);
     public static final CFG<Boolean> SHOW_TOOLBELT_0 = new CFG<>("general.toolbelt0", true);
     public static final CFG<Boolean> SHOW_TOOLBELT_1 = new CFG<>("general.toolbelt1", false);
+    public static final CFG<Boolean> AUTO_PICK_ONLY_RADAR = new CFG<>("general.auto_pick_radar", true);
     public static final CFG<Integer> AUTO_PICK_RADIUS = new CFG<>("general.auto_pick_radius", 55);
     
+    public static final CFG<Theme> THEME = new CFG<>("ui.theme", Theme.Pretty);
     public static final CFG<Boolean> DISABLE_UI_HIDING = new CFG<>("ui.disable_ui_hide", true);
     public static final CFG<Boolean> ALT_COMBAT_UI = new CFG<>("ui.combat.alt_ui", false);
     public static final CFG<Boolean> SIMPLE_COMBAT_OPENINGS = new CFG<>("ui.combat.simple_openings", true);
+    public static final CFG<Boolean> ALWAYS_MARK_COMBAT_TARGET = new CFG<>("ui.combat.always_mark_target", false);
     public static final CFG<Boolean> SHOW_COMBAT_DMG = new CFG<>("ui.combat.show_dmg", true);
     public static final CFG<Boolean> SHOW_CUMULATIVE_DMG = new CFG("ui.combat.show_cumulative_dmg", false);
     public static final CFG<Boolean> CLEAR_PLAYER_DMG_AFTER_COMBAT = new CFG<>("ui.combat.clear_player_damage_after", true);
