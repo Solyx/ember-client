@@ -2088,6 +2088,7 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	}
 	
 	protected void hit(Coord pc, Coord2d mc, ClickData inf) {
+	    if(Config.center_tile) { mc = mc.floor(tilesz).mul(tilesz).add(5, 5); }
 	    Object[] args = {pc, mc.floor(posres), clickb, ui.modflags()};
 	    
 	    if(inf != null) {
@@ -2105,8 +2106,23 @@ public class MapView extends PView implements DTarget, Console.Directory {
 		}
 	    }
 	    if(clickb == 1) {Bot.cancel();}
-	    wdgmsg("click", args);
+	    
+	    click(mc, clickb, args);
 	}
+    }
+    
+    public void click(Coord2d mc, int clickb, Object... args) {
+	boolean send = true;
+	if(clickb == 1 && CFG.QUEUE_PATHS.get()) {
+	    if(ui.modmeta) {
+		args[3] = 0;
+		send = ui.gui.pathQueue.add(glob.map.getzp(mc));
+	    } else {
+		ui.gui.pathQueue.start(glob.map.getzp(mc));
+	    }
+	}
+	if(send)
+	    wdgmsg("click", args);
     }
     
     public void grab(Grabber grab) {
