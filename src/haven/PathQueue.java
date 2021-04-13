@@ -3,11 +3,13 @@ package haven;
 import java.util.LinkedList;
 import java.util.List;
 
+import static haven.MCache.*;
 import static haven.OCache.*;
 
 public class PathQueue {
     private static final boolean DBG = false;
-    private final List<Coord3f> queue = new LinkedList<>();
+    private static final Coord2d gsz = tilesz.mul(cmaps.x, cmaps.y);
+    private final List<Coord2d> queue = new LinkedList<>();
     private final MapView map;
     private Moving moving;
     
@@ -18,7 +20,7 @@ public class PathQueue {
 	});
     }
     
-    public boolean add(Coord3f p) {
+    public boolean add(Coord2d p) {
 	boolean start = false;
 	synchronized (queue) {
 	    if(queue.isEmpty()) { start = true; }
@@ -28,7 +30,7 @@ public class PathQueue {
 	return start;
     }
     
-    public void start(Coord3f p) {
+    public void start(Coord2d p) {
 	synchronized (queue) {
 	    queue.clear();
 	    queue.add(p);
@@ -36,7 +38,7 @@ public class PathQueue {
     }
     
     public List<Pair<Coord3f, Coord3f>> lines() {
-	LinkedList<Coord3f> tmp;
+	LinkedList<Coord2d> tmp;
 	synchronized (queue) {
 	    tmp = new LinkedList<>(queue);
 	}
@@ -46,8 +48,21 @@ public class PathQueue {
 	    try {
 		Gob player = map.player();
 		if(player != null) {
-		    Coord3f current = moving == null ? player.getrc() : moving.gett();
-		    for (Coord3f next : tmp) {
+		    Coord2d pc = player.rc;
+		    Coord pgrid = pc.floor(gsz);
+		    float z = 0;
+		    Coord3f current = new Coord3f((float) pc.x, (float) pc.y, 0);
+		    try {
+			current = moving == null ? player.getrc() : moving.gett();
+			z = current.z;
+		    } catch (Loading ignored) {}
+		    for (Coord2d p : tmp) {
+			Coord3f next = new Coord3f((float) p.x, (float) p.y, z);
+			if(pgrid.manhattan2(p.floor(gsz)) <= 1) {
+			    try {
+				next = map.glob.map.getzp(p);
+			    } catch (Loading ignored) {}
+			}
 			lines.add(new Pair<>(current, next));
 			current = next;
 		    }
@@ -57,7 +72,27 @@ public class PathQueue {
 	return lines;
     }
     
-    private Coord3f pop() {
+    public List<Pair<Coord2d, Coord2d>> minimapLines() {
+	LinkedList<Coord2d> tmp;
+	synchronized (queue) {
+	    tmp = new LinkedList<>(queue);
+	}
+	
+	List<Pair<Coord2d, Coord2d>> lines = new LinkedList<>();
+	if(!tmp.isEmpty()) {
+	    Gob player = map.player();
+	    if(player != null) {
+		Coord2d current = player.rc;
+		for (Coord2d p : tmp) {
+		    lines.add(new Pair<>(current, p));
+		    current = p;
+		}
+	    }
+	}
+	return lines;
+    }
+    
+    private Coord2d pop() {
 	synchronized (queue) {
 	    if(queue.isEmpty()) { return null; }
 	    queue.remove(0);
@@ -71,10 +106,9 @@ public class PathQueue {
 	moving = (Moving) to;
 	synchronized (queue) {
 	    if(to == null) {
-		Coord3f next = pop();
+		Coord2d next = pop();
 		if(next != null) {
-		    Coord2d mc = new Coord2d(next.x, next.y);
-		    map.wdgmsg("click", Coord.z, mc.floor(posres), 1, 0);
+		    map.wdgmsg("click", Coord.z, next.floor(posres), 1, 0);
 		}
 	    } else if(to instanceof Homing || to instanceof Following) {
 		clear();
@@ -100,7 +134,7 @@ public class PathQueue {
 	}
     }
     
-    private void clear() {
+    public void clear() {
 	synchronized (queue) {queue.clear();}
     }
     

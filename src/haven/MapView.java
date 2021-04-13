@@ -2116,9 +2116,9 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	if(clickb == 1 && CFG.QUEUE_PATHS.get()) {
 	    if(ui.modmeta) {
 		args[3] = 0;
-		send = ui.gui.pathQueue.add(glob.map.getzp(mc));
+		send = ui.gui.pathQueue.add(mc);
 	    } else {
-		ui.gui.pathQueue.start(glob.map.getzp(mc));
+		ui.gui.pathQueue.start(mc);
 	    }
 	}
 	if(send)
@@ -2144,8 +2144,10 @@ public class MapView extends PView implements DTarget, Console.Directory {
 	    }
 	} else if((placing_l != null) && placing_l.done()) {
 	    Plob placing = placing_l.get();
-	    if(placing.lastmc != null)
-		wdgmsg("place", placing.rc.floor(posres), (int)Math.round(placing.a * 32768 / Math.PI), button, ui.modflags());
+	    if(placing.lastmc != null) {
+		wdgmsg("place", placing.rc.floor(posres), (int) Math.round(placing.a * 32768 / Math.PI), button, ui.modflags());
+		ui.gui.pathQueue.start(placing.rc);
+	    }
 	} else if((grab != null) && grab.mmousedown(c, button)) {
 	} else {
 	    new Click(c, button).run();
