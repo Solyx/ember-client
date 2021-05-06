@@ -29,6 +29,7 @@ package haven;
 import java.awt.RenderingHints;
 import java.io.*;
 import java.nio.*;
+import java.nio.file.*;
 import java.net.URL;
 import java.lang.ref.*;
 import java.lang.reflect.*;
@@ -40,6 +41,8 @@ import java.util.function.*;
 import java.awt.Graphics;
 import java.awt.Color;
 import java.awt.image.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Utils {
     public static final java.nio.charset.Charset utf8 = java.nio.charset.Charset.forName("UTF-8");
@@ -82,7 +85,17 @@ public class Utils {
 	    }
 	}
     }
-	
+
+    public static Path path(String path) {
+	return(FileSystems.getDefault().getPath(path));
+    }
+
+    public static Path pj(Path base, String... els) {
+	for(String el : els)
+	    base = base.resolve(el);
+	return(base);
+    }
+
     public static int drawtext(Graphics g, String text, Coord c) {
 	java.awt.FontMetrics m = g.getFontMetrics();
 	g.drawString(text, c.x, c.y + m.getAscent());
@@ -785,7 +798,44 @@ public class Utils {
 	    off += ret;
 	}
     }
-    
+
+    public static interface IOFunction<T> {
+	/* Check exceptions banzai :P */
+	public T run() throws IOException;
+    }
+
+    public static <T> T ioretry(IOFunction<? extends T> task) throws IOException {
+	double[] retimes = {0.01, 0.1, 0.5, 1.0, 5.0};
+	Throwable last = null;
+	boolean intr = false;
+	try {
+	    for(int r = 0; true; r++) {
+		try {
+		    return(task.run());
+		} catch(RuntimeException | IOException exc) {
+		    if(last == null)
+			new Warning(exc, "weird I/O error occurred on " + String.valueOf(task)).issue();
+		    if(last != null)
+			exc.addSuppressed(last);
+		    last = exc;
+		    if(r < retimes.length) {
+			try {
+			    Thread.sleep((long)(retimes[r] * 1000));
+			} catch(InterruptedException irq) {
+			    Thread.currentThread().interrupted();
+			    intr = true;
+			}
+		    } else {
+			throw(exc);
+		    }
+		}
+	    }
+	} finally {
+	    if(intr)
+		Thread.currentThread().interrupt();
+	}
+    }
+
     private static void dumptg(ThreadGroup tg, PrintWriter out, int indent) {
 	for(int o = 0; o < indent; o++)
 	    out.print("    ");
@@ -1969,6 +2019,34 @@ public class Utils {
 	    new Coord((int) (x0src + t0 * xdelta), (int) (y0src + t0 * ydelta)),
 	    new Coord((int) (x0src + t1 * xdelta), (int) (y0src + t1 * ydelta))
 	);
+    }
+    
+    public static Optional<Coord2d> intersect(Pair<Coord2d, Coord2d> lineA, Pair<Coord2d, Coord2d> lineB) {
+	double a1 = lineA.b.y - lineA.a.y;
+	double b1 = lineA.a.x - lineA.b.x;
+	double c1 = a1 * lineA.a.x + b1 * lineA.a.y;
+	
+	double a2 = lineB.b.y - lineB.a.y;
+	double b2 = lineB.a.x - lineB.b.x;
+	double c2 = a2 * lineB.a.x + b2 * lineB.a.y;
+	
+	double delta = a1 * b2 - a2 * b1;
+	if(delta == 0) {
+	    return Optional.empty();
+	}
+	return Optional.of(new Coord2d((float) ((b2 * c1 - b1 * c2) / delta), (float) ((a1 * c2 - a2 * c1) / delta)));
+    }
+    
+    private static final Pattern RESID = Pattern.compile(".*\\[([^,]*),?.*]");
+    public static String prettyResName(String resname) {
+	Matcher m = RESID.matcher(resname);
+	if(m.matches()) {
+	    resname = m.group(1);
+	}
+	int k = resname.lastIndexOf("/");
+	resname = resname.substring(k + 1);
+	resname = resname.substring(0, 1).toUpperCase() + resname.substring(1);
+	return resname;
     }
     
     public static boolean checkbit(int target, int index) {

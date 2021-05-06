@@ -26,8 +26,11 @@
 
 package haven;
 
-import java.util.*;
-import static haven.Utils.uint32;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+
+import static haven.Utils.*;
 
 public class Fightview extends Widget {
     public static final Tex bg = Resource.loadtex("gfx/hud/bosq");
@@ -270,6 +273,9 @@ public class Fightview extends Widget {
 	    rel.ip = (Integer)args[2];
 	    rel.oip = (Integer)args[3];
             lsrel.addFirst(rel);
+	    if(rel.give.state == 0 && CFG.COMBAT_AUTO_PEACE.get()) {
+		wdgmsg("give", (int)rel.gobid, 1);
+	    }
 	    OCache.isfight = true;
             return;
         } else if(msg == "del") {
@@ -287,7 +293,11 @@ public class Fightview extends Widget {
             return;
         } else if(msg == "upd") {
             Relation rel = getrel(uint32((Integer)args[0]));
+            int was = rel.give.state;
 	    rel.give((Integer)args[1]);
+	    if(was == 2 && rel.give.state == 0 && CFG.COMBAT_AUTO_PEACE.get()) {
+		wdgmsg("give", (int) rel.gobid, 1);
+	    }
 	    rel.ip = (Integer)args[2];
 	    rel.oip = (Integer)args[3];
             return;

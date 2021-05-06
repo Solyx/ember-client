@@ -62,6 +62,13 @@ public class Button extends SIWidget {
 		return(new Button(UI.scale((Integer)args[0]), (String)args[1]));
 	}
     }
+    
+    public static class $BtnSmall implements Factory {
+	public Widget create(UI ui, Object[] args) {
+	    return (new Button(UI.scale((Integer) args[0]), (String) args[1], false));
+	}
+    }
+    
     @RName("ltbtn")
     public static class $LTBtn implements Factory {
 	public Widget create(UI ui, Object[] args) {
@@ -202,11 +209,11 @@ public class Button extends SIWidget {
     }
 
     protected void depress() {
-	Audio.play(click);
+	ui.sfx(click);
     }
 
     protected void unpress() {
-	Audio.play(click);
+	ui.sfx(click);
     }
 
     public boolean mousedown(Coord c, int button) {

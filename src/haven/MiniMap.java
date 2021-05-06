@@ -30,6 +30,10 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 
+import java.util.function.*;
+import java.awt.Color;
+import java.util.stream.Collectors;
+
 import haven.MapFile.Segment;
 import haven.MapFile.DataGrid;
 import haven.MapFile.Grid;
@@ -61,6 +65,7 @@ public class MiniMap extends Widget {
     protected Location dloc;
     private String biome;
     private Tex biometex;
+    public boolean big = false;
 
     public MiniMap(Coord sz, MapFile file) {
 	super(sz);
@@ -257,6 +262,9 @@ public class MiniMap extends Widget {
 	public void update(Coord2d rc, double ang) {
 	    this.rc = rc;
 	    this.ang = ang;
+	}
+
+	public void dispupdate() {
 	    if((this.rc == null) || (sessloc == null) || (dloc == null) || (dloc.seg != sessloc.seg))
 		this.sc = null;
 	    else
@@ -281,6 +289,10 @@ public class MiniMap extends Widget {
     
 	public boolean isPlayer() {
 	    return "gfx/hud/mmap/plo".equals(icon.res.get().name);
+	}
+	
+	public boolean isDead() {
+	    return gob.anyOf(GobTag.DEAD, GobTag.KO);
 	}
     }
 
@@ -374,38 +386,69 @@ public class MiniMap extends Widget {
 	    mapext = Area.sized(sc.mul(cmaps.mul(1 << lvl)), cmaps.mul(1 << lvl));
 	}
 
-	public Tex img() {
-	    DataGrid grid = gref.get();
-	    if(grid != cgrid) {
-		if(nextimg != null)
-		    nextimg.cancel();
-		if(grid instanceof MapFile.ZoomGrid) {
-		    nextimg = Defer.later(() -> new TexI(grid.render(sc.mul(cmaps))));
-		} else {
-		    nextimg = Defer.later(new Defer.Callable<Tex>() {
-			    MapFile.View view = new MapFile.View(seg);
+	class CachedImage {
+	    final Function<DataGrid, Defer.Future<Tex>> src;
+	    DataGrid cgrid;
+	    Defer.Future<Tex> next;
+	    Tex img;
 
-			    public TexI call() {
-				try(Locked lk = new Locked(file.lock.readLock())) {
-				    for(int y = -1; y <= 1; y++) {
-					for(int x = -1; x <= 1; x++) {
-					    view.addgrid(sc.add(x, y));
+	    CachedImage(Function<DataGrid, Defer.Future<Tex>> src) {
+		this.src = src;
+	    }
+
+	    public Tex get() {
+		DataGrid grid = gref.get();
+		if(grid != cgrid) {
+		    if(next != null)
+			next.cancel();
+		    next = src.apply(grid);
+		    cgrid = grid;
+		}
+		if(next != null) {
+		    try {
+			img = next.get();
+		    } catch(Loading l) {}
+		}
+		return(img);
+	    }
+	}
+
+	private CachedImage img_c;
+	public Tex img() {
+	    if(img_c == null) {
+		img_c = new CachedImage(grid -> {
+			if(grid instanceof MapFile.ZoomGrid) {
+			    return(Defer.later(() -> new TexI(grid.render(sc.mul(cmaps)))));
+			} else {
+			    return(Defer.later(new Defer.Callable<Tex>() {
+				    MapFile.View view = new MapFile.View(seg);
+
+				    public TexI call() {
+					try(Locked lk = new Locked(file.lock.readLock())) {
+					    for(int y = -1; y <= 1; y++) {
+						for(int x = -1; x <= 1; x++) {
+						    view.addgrid(sc.add(x, y));
+						}
+					    }
+					    view.fin();
+					    return(new TexI(MapSource.drawmap(view, Area.sized(sc.mul(cmaps), cmaps))));
 					}
 				    }
-				    view.fin();
-				    return(new TexI(MapSource.drawmap(view, Area.sized(sc.mul(cmaps), cmaps))));
-				}
-			    }
-			});
-		}
-		cgrid = grid;
+				}));
+			}
+		});
 	    }
-	    if(nextimg != null) {
-		try {
-		    img = nextimg.get();
-		} catch(Loading l) {}
+	    return(img_c.get());
+	}
+
+	private Map<String, CachedImage> olimg_c = new HashMap<>();
+	public Tex olimg(String tag) {
+	    CachedImage ret;
+	    synchronized(olimg_c) {
+		if((ret = olimg_c.get(tag)) == null)
+		    olimg_c.put(tag, ret = new CachedImage(grid -> Defer.later(() -> new TexI(grid.olrender(sc.mul(cmaps), tag)))));
 	    }
-	    return(img);
+	    return(ret.get());
 	}
 
 	private Collection<DisplayMarker> markers = Collections.emptyList();
@@ -473,21 +516,27 @@ public class MiniMap extends Widget {
 		file.lock.readLock().unlock();
 	    }
 	}
+	for(DisplayIcon icon : icons)
+	    icon.dispupdate();
+    }
+
+    public void drawgrid(GOut g, Coord ul, DisplayGrid disp) {
+	try {
+	    Tex img = disp.img();
+	    if(img != null)
+		g.image(img, ul, UI.scale(img.sz()));
+	} catch(Loading l) {
+	}
     }
 
     public void drawmap(GOut g) {
 	Coord hsz = sz.div(2);
 	for(Coord c : dgext) {
-	    Tex img;
-	    try {
-		DisplayGrid disp = display[dgext.ri(c)];
-		if((disp == null) || ((img = disp.img()) == null))
-		    continue;
-	    } catch(Loading l) {
-		continue;
-	    }
 	    Coord ul = UI.scale(c.mul(cmaps)).sub(dloc.tc.div(scalef())).add(hsz);
-	    g.image(img, ul, UI.scale(img.sz()));
+	    DisplayGrid disp = display[dgext.ri(c)];
+	    if(disp == null)
+		continue;
+	    drawgrid(g, ul, disp);
 	}
     }
 
@@ -552,6 +601,8 @@ public class MiniMap extends Widget {
 	    if(disp.isPlayer()) {
 		g.chcolor(disp.kin() != null ? Color.WHITE : Color.RED);
 		g.aimage(RadarCFG.Symbols.$circle.tex, disp.sc, 0.5, 0.5);
+	    } else if (disp.isDead()) {
+	        img = disp.icon.imggray();
 	    }
 	    
 	    if(disp.col != null)
@@ -603,9 +654,10 @@ public class MiniMap extends Widget {
 	drawmap(g);
 	drawmarkers(g);
 	boolean playerSegment = (sessloc != null) && ((curloc == null) || (sessloc.seg == curloc.seg));
-	if(playerSegment && zoomlevel <= 2 && CFG.MMAP_GRID.get()) {drawgrid(g);}
+	if(zoomlevel <= 2 && CFG.MMAP_GRID.get()) {drawgrid(g);}
 	if(playerSegment && zoomlevel <= 1 && CFG.MMAP_VIEW.get()) {drawview(g);}
 	if(playerSegment && CFG.MMAP_SHOW_PATH.get()) {drawMovement(g);}
+	if(big && CFG.MMAP_POINTER.get()) {drawPointers(g);}
 	if(dlvl <= 1)
 	    drawicons(g);
 	if(playerSegment) drawparty(g);
@@ -799,6 +851,14 @@ public class MiniMap extends Widget {
 	    if(icon != null) {
 		return icon.tooltip();
 	    }
+	    if(CFG.MMAP_POINTER.get()) {
+		long curSeg = dloc.seg.id;
+		for (IPointer p : pointers()) {
+		    if(p.seg() == curSeg && p.sc(p2c(p.tc(curSeg)), sz).dist(c) < 20) {
+			return p.tooltip();
+		    }
+		}
+	    }
 	}
 	return(super.tooltip(c, prev));
     }
@@ -809,6 +869,7 @@ public class MiniMap extends Widget {
 	    if(gob == null)
 		if(Config.always_true) {
 		    Coord2d clickAt = loc.tc.sub(sessloc.tc).mul(tilesz).add(tilesz.div(2));
+		    ui.pathQueue().ifPresent(pathQueue -> pathQueue.click(clickAt));
 		    mv.click(clickAt, button, mc,
 			clickAt.floor(posres),
 			button, ui.modflags());
@@ -820,6 +881,7 @@ public class MiniMap extends Widget {
 		if(button == 3) {FlowerMenu.lastGob(gob);}
 		if(Config.always_true) {
 		    Coord2d clickAt = loc.tc.sub(sessloc.tc).mul(tilesz).add(tilesz.div(2));
+		    ui.pathQueue().ifPresent(pathQueue -> pathQueue.click(gob));
 		    mv.click(clickAt, button, mc,
 			clickAt.floor(posres), button, ui.modflags(), 0,
 			(int) gob.id, gob.rc.floor(posres), 0, -1);
@@ -892,6 +954,27 @@ public class MiniMap extends Widget {
 	}
     }
     
+    void drawPointers(GOut g) {
+	for (IPointer p : pointers()) {
+	    if(curloc != null && p.seg() == curloc.seg.id) {
+		p.drawmmarrow(g, p2c(p.tc(curloc.seg.id)), sz);
+	    }
+	}
+	g.chcolor();
+    }
+    
+    private List<IPointer> pointers() {
+	if(curloc == null) {
+	    return Collections.emptyList();
+	}
+	long curSeg = curloc.seg.id;
+	return ui.gui.children().stream()
+	    .filter(widget -> widget instanceof IPointer)
+	    .map(widget -> (IPointer) widget)
+	    .filter(p -> p.tc(curSeg) != null)
+	    .collect(Collectors.toList());
+    }
+    
     void drawbiome(GOut g) {
 	if(biometex != null) {
 	    Coord mid = new Coord(g.sz().x / 2, 0);
@@ -933,15 +1016,20 @@ public class MiniMap extends Widget {
 	    if(newbiome == null) {newbiome = "???";}
 	    if(!newbiome.equals(biome)) {
 		biome = newbiome;
-		biometex = Text.renderstroked(prettybiome(biome)).tex();
+		biometex = Text.renderstroked(Utils.prettyResName(biome)).tex();
 	    }
 	} catch (Loading ignored) {}
     }
     
-    private static String prettybiome(String biome) {
-	int k = biome.lastIndexOf("/");
-	biome = biome.substring(k + 1);
-	biome = biome.substring(0, 1).toUpperCase() + biome.substring(1);
-	return biome;
+    public interface IPointer {
+	Coord2d tc(long id);
+	
+	Coord sc(Coord c, Coord sz);
+	
+	Object tooltip();
+	
+	long seg();
+	
+	void drawmmarrow(GOut g, Coord tc, Coord sz);
     }
 }

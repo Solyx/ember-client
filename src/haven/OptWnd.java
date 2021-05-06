@@ -613,7 +613,17 @@ public class OptWnd extends WindowX {
 		    Audio.setvolume(val / 1000.0);
 		}
 	    }, prev.pos("bl").adds(0, 2));
-	prev = audio.add(new Label("In-game event volume"), prev.pos("bl").adds(0, 15));
+	prev = audio.add(new Label("Interface sound volume"), prev.pos("bl").adds(0, 15));
+	prev = audio.add(new HSlider(UI.scale(200), 0, 1000, 0) {
+		protected void attach(UI ui) {
+		    super.attach(ui);
+		    val = (int)(ui.audio.aui.volume * 1000);
+		}
+		public void changed() {
+		    ui.audio.aui.setvolume(val / 1000.0);
+		}
+	    }, prev.pos("bl").adds(0, 2));
+	prev = audio.add(new Label("In-game event volume"), prev.pos("bl").adds(0, 5));
 	prev = audio.add(new HSlider(UI.scale(200), 0, 1000, 0) {
 		protected void attach(UI ui) {
 		    super.attach(ui);
@@ -769,6 +779,9 @@ public class OptWnd extends WindowX {
 	general.add(new CFGBox("Output missing translation lines", L10N.DBG), x, y);
     
 	y += STEP;
+	general.add(new CFGBox("Force hardware cursor", CFG.FORCE_HW_CURSOR, null, true), x, y);
+    
+	y += STEP;
 	tx = x + general.add(new Label("UI Theme:"), x, y).sz.x + UI.scale(5);
 	general.add(new Dropbox<Theme>(UI.scale(100), 5, UI.scale(16)) {
 	    @Override
@@ -867,7 +880,7 @@ public class OptWnd extends WindowX {
 	final FlowerList list = general.add(new FlowerList(), x, y);
     
 	y += list.sz.y + UI.scale(5);
-	final TextEntry value = general.add(new TextEntry(UI.scale(155), "") {
+	final TextEntry value = general.add(new TextEntry(UI.scale(160), "") {
 	    @Override
 	    public void activate(String text) {
 		list.add(text);
@@ -875,13 +888,38 @@ public class OptWnd extends WindowX {
 	    }
 	}, x, y);
     
-	general.add(new Button(UI.scale(45), "Add") {
+	general.add(new Button(UI.scale(85), "Add") {
 	    @Override
 	    public void click() {
 		list.add(value.text);
 		value.settext("");
 	    }
-	}, x + UI.scale(160), y - UI.scale(2));
+	}, x + UI.scale(165), y - UI.scale(2));
+    
+	y += STEP;
+	tx = x + general.add(new Label("Hold to ignore auto choose:"), x, y).sz.x + UI.scale(5);
+	general.add(new Dropbox<UI.KeyMod>(UI.scale(100), 5, UI.scale(16)) {
+	    @Override
+	    protected UI.KeyMod listitem(int i) {
+		return UI.KeyMod.values()[i];
+	    }
+	
+	    @Override
+	    protected int listitems() {
+		return UI.KeyMod.values().length;
+	    }
+	
+	    @Override
+	    protected void drawitem(GOut g, UI.KeyMod item, int i) {
+		g.atext(item.name(), UI.scale(3, 8), 0, 0.5);
+	    }
+	
+	    @Override
+	    public void change(UI.KeyMod item) {
+		super.change(item);
+		if(!item.equals(CFG.MENU_SKIP_AUTO_CHOOSE.get())) CFG.MENU_SKIP_AUTO_CHOOSE.set(item, true);
+	    }
+	}, tx, y).change(CFG.MENU_SKIP_AUTO_CHOOSE.get());
     
 	my = Math.max(my, y);
     
@@ -1016,6 +1054,9 @@ public class OptWnd extends WindowX {
 		}
 	    }
 	}, x, y);
+	
+	y += STEP;
+	display.add(new CFGBox("Show Task Messages", CFG.SHOW_BOT_MESSAGES), x, y);
  
 	my = Math.max(my, y);
 	x += UI.scale(265);
@@ -1024,6 +1065,9 @@ public class OptWnd extends WindowX {
     
 	y += STEP;
 	display.add(new CFGBox("Always mark current target", CFG.ALWAYS_MARK_COMBAT_TARGET , "Usually current target only marked when there's more than one"), x, y);
+    
+	y += STEP;
+	display.add(new CFGBox("Auto peace on combat start", CFG.COMBAT_AUTO_PEACE , "Automatically enter peacfull mode on combat start id enemy is aggressive - useful for taming"), x, y);
 	
 	y += STEP;
 	display.add(new CFGBox("Show combat damage", CFG.SHOW_COMBAT_DMG), x, y);
@@ -1052,6 +1096,7 @@ public class OptWnd extends WindowX {
     private void populateShortcutsPanel(KeyBinder.KeyBindType type) {
         shortcutList.clear(true);
 	KeyBinder.makeWidgets(type).forEach(shortcutList::additem);
+	shortcutList.updateChildPositions();
     }
     
     private void initShortcutsPanel() {
@@ -1062,16 +1107,6 @@ public class OptWnd extends WindowX {
 	int y = tabs.sz.y;
 	
 	shortcutList = shortcuts.add(new WidgetList<KeyBinder.ShortcutWidget>(UI.scale(300, 24), 16) {
-	    @Override
-	    public boolean mousedown(Coord c0, int button) {
-		boolean result = super.mousedown(c0, button);
-		KeyBinder.ShortcutWidget item = itemat(c0);
-		if(item != null) {
-		    c0 = c0.add(0, sb.val * itemsz.y);
-		    item.mousedown(c0.sub(item.parentpos(this)), button);
-		}
-		return result;
-	    }
 	    
 	    @Override
 	    public Object tooltip(Coord c0, Widget prev) {

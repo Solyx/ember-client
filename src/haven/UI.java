@@ -45,6 +45,15 @@ import haven.render.Render;
 
 public class UI {
     public static int MOD_SHIFT = 1, MOD_CTRL = 2, MOD_META = 4, MOD_SUPER = 8;
+    enum KeyMod {
+        SHIFT(MOD_SHIFT), CTRL(MOD_CTRL), ALT(MOD_META);
+    
+	public final int mod;
+    
+	KeyMod(int mod) {
+	    this.mod = mod;
+	}
+    }
     public RootWidget root;
     private final LinkedList<Grab> keygrab = new LinkedList<Grab>(), mousegrab = new LinkedList<Grab>();
     private final Map<Integer, Widget> widgets = new TreeMap<Integer, Widget>();
@@ -540,6 +549,17 @@ public class UI {
     public void destroy() {
 	root.destroy();
 	audio.clear();
+    }
+    
+    public Optional<PathQueue> pathQueue() {
+	return (gui != null && gui.pathQueue != null) ? Optional.of(gui.pathQueue) : Optional.empty();
+    }
+
+    public void sfx(Audio.CS clip) {
+	audio.aui.add(clip);
+    }
+    public void sfx(Resource clip) {
+	sfx(Audio.fromres(clip));
     }
 
     public static double scale(double v) {
