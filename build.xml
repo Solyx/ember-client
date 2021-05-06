@@ -163,6 +163,7 @@
     <delete dir="resources/classes" />
     <delete dir="resources/compiled" />
     <delete file="build/lib/client-res.jar" />
+    <delete file="build/update.zip" />
   </target>
   
   <target name="profile" depends="jars">
